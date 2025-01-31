@@ -1,8 +1,8 @@
 [project]
 name = "onlinecinemaapi"
 version = "0.1.0"
-description = ""
-authors = [""]
+description = "Online Cinema API"
+authors = ["Team"]
 
 readme = "README.md"
 requires-python = ">=3.12"

@@ -1,13 +1,29 @@
 import enum
 from datetime import datetime, timezone, timedelta, date
+from typing import Optional
 
-from sqlalchemy import Integer, String, Boolean, DateTime, func, ForeignKey, Enum, Optional, Text, Date
-from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
+from sqlalchemy import (
+    Integer,
+    String,
+    Boolean,
+    DateTime,
+    func,
+    ForeignKey,
+    Enum,
+    Text,
+    Date
+)
+from sqlalchemy.orm import (
+    Mapped,
+    mapped_column,
+    relationship,
+    validates
+)
 
-from src.database.models.base import Base
-from src.security.token_generator import generate_secure_token
-from src.security.passwords import hash_password, verify_password
-from src.database.validators import accounts as validators
+from database.models.base import Base
+from database.validators import accounts as validators
+from security.passwords import hash_password, verify_password
+from security.token_generator import generate_secure_token
 
 
 class UserGroupEnum(str, enum.Enum):
@@ -51,7 +67,10 @@ class ActivationTokenModel(BaseTokenModel):
     )
 
     def __repr__(self):
-        return f"<ActivationTokenModel(id={self.id}, token={self.token}, expires_at={self.expires_at})>"
+        return (
+            f"<ActivationTokenModel(id={self.id}, "
+            f"token={self.token}, expires_at={self.expires_at})>"
+        )
 
 
 class PasswordResetTokenModel(BaseTokenModel):
@@ -63,7 +82,10 @@ class PasswordResetTokenModel(BaseTokenModel):
     )
 
     def __repr__(self):
-        return f"<PasswordResetToken(id={self.id}, token={self.token}, expires_at={self.expires_at})>"
+        return (
+            f"<PasswordResetToken(id={self.id}, "
+            f"token={self.token}, expires_at={self.expires_at})>"
+        )
 
 
 class RefreshTokenModel(BaseTokenModel):

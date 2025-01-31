@@ -15,6 +15,8 @@ from sqlalchemy.orm import (
     relationship
 )
 from database.models.base import Base
+from database.models.users import UserModel
+from database.models.movies import MovieModel
 
 
 class OrderStatusEnum(str, enum.Enum):

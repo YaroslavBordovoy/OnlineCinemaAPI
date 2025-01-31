@@ -71,7 +71,8 @@ ignore = [
     "C901",  # function too complex
     "W191",  # indentation contains tabs
     "D401",  # first line should be in imperative mood
-    "I001"   # isort
+    "I001",   # isort
+    "F401"
 
 ]
 

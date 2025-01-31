@@ -14,10 +14,11 @@ from sqlalchemy.orm import (
     mapped_column,
     relationship
 )
-
-from database.models.accounts import UserModel
 from database.models.base import Base
-from database.models.orders import OrderModel, OrderItemModel
+from database.models.users import UserModel
+from database.models.orders import OrderModel
+from database.models.order_items import OrderItemModel
+
 
 
 class PaymentStatus(enum.Enum):
@@ -30,7 +31,7 @@ class PaymentModel(Base):
     __tablename__ = "payments"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey(UserModel.id), nullable=False)
     order_id: Mapped[int] = mapped_column(ForeignKey(OrderModel.id), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
@@ -45,7 +46,7 @@ class PaymentModel(Base):
     amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     external_payment_id: Mapped[str] = mapped_column(nullable=True)
 
-    user: Mapped["UserModel"] = relationship()
+    user: Mapped[UserModel] = relationship()
     order: Mapped[OrderModel] = relationship()
     payment_items: Mapped[List["PaymentItemModel"]] = relationship(
         back_populates="payment",

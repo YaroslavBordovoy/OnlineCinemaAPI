@@ -1,8 +1,8 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
-from config import get_settings
 from database.models.base import Base
+from config.dependencies import get_settings
 
 settings = get_settings()
 

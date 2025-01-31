@@ -5,6 +5,7 @@ from sqlalchemy import pool
 
 from alembic import context
 from database.models import movies, accounts, orders
+
 from database.models.base import Base
 
 # this is the Alembic Config object, which provides

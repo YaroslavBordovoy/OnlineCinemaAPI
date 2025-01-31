@@ -1,6 +1,6 @@
 import os
 
-from config.settings import TestingSettings, Settings, BaseAppSettings
+from src.config.settings import TestingSettings, Settings, BaseAppSettings
 
 
 def get_settings() -> BaseAppSettings:

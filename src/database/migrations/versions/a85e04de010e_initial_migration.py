@@ -58,11 +58,10 @@ def upgrade() -> None:
         sa.Column("time", sa.Integer(), nullable=False),
         sa.Column("imdb", sa.Float(), nullable=False),
         sa.Column("votes", sa.Integer(), nullable=False),
-        sa.Column("meta_score", sa.Float(), nullable=False),
-        sa.Column("gross", sa.Float(), nullable=False),
+        sa.Column("meta_score", sa.Float(), nullable=True),
+        sa.Column("gross", sa.Float(), nullable=True),
         sa.Column("description", sa.Text(), nullable=False),
         sa.Column("price", sa.DECIMAL(precision=10, scale=2), nullable=False),
-        sa.Column("revenue", sa.Float(), nullable=False),
         sa.Column("certification_id", sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(
             ["certification_id"],

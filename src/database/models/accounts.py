@@ -2,23 +2,8 @@ import enum
 from datetime import datetime, timezone, timedelta, date
 from typing import Optional
 
-from sqlalchemy import (
-    Integer,
-    String,
-    Boolean,
-    DateTime,
-    func,
-    ForeignKey,
-    Enum,
-    Text,
-    Date
-)
-from sqlalchemy.orm import (
-    Mapped,
-    mapped_column,
-    relationship,
-    validates
-)
+from sqlalchemy import Integer, String, Boolean, DateTime, func, ForeignKey, Enum, Text, Date
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from database.models.base import Base
 from database.validators import accounts as validators
@@ -67,10 +52,7 @@ class ActivationTokenModel(BaseTokenModel):
     )
 
     def __repr__(self):
-        return (
-            f"<ActivationTokenModel(id={self.id}, "
-            f"token={self.token}, expires_at={self.expires_at})>"
-        )
+        return f"<ActivationTokenModel(id={self.id}, " f"token={self.token}, expires_at={self.expires_at})>"
 
 
 class PasswordResetTokenModel(BaseTokenModel):
@@ -82,10 +64,7 @@ class PasswordResetTokenModel(BaseTokenModel):
     )
 
     def __repr__(self):
-        return (
-            f"<PasswordResetToken(id={self.id}, "
-            f"token={self.token}, expires_at={self.expires_at})>"
-        )
+        return f"<PasswordResetToken(id={self.id}, " f"token={self.token}, expires_at={self.expires_at})>"
 
 
 class RefreshTokenModel(BaseTokenModel):
@@ -114,11 +93,7 @@ class RefreshTokenModel(BaseTokenModel):
 class UserGroupModel(Base):
     __tablename__ = "user_groups"
 
-    id: Mapped[int] = mapped_column(
-        Integer,
-        primary_key=True,
-        autoincrement=True
-    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[UserGroupEnum] = mapped_column(
         Enum(UserGroupEnum),
         unique=True,
@@ -134,11 +109,7 @@ class UserGroupModel(Base):
 class UserModel(Base):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(
-        Integer,
-        primary_key=True,
-        autoincrement=True
-    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     _hashed_password: Mapped[str] = mapped_column(
         "hashed_password",
@@ -152,14 +123,9 @@ class UserModel(Base):
         nullable=False,
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
-        nullable=False
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
-    group_id: Mapped[int] = mapped_column(
-        ForeignKey("user_groups.id", ondelete="CASCADE"), nullable=False
-    )
+    group_id: Mapped[int] = mapped_column(ForeignKey("user_groups.id", ondelete="CASCADE"), nullable=False)
 
     group: Mapped[UserGroupModel] = relationship(
         UserGroupModel,

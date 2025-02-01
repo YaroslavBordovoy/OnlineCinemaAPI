@@ -4,7 +4,7 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
-from database.models import movies, accounts, orders
+from database.models import movies, accounts, orders, cart, payments
 
 from database.models.base import Base
 

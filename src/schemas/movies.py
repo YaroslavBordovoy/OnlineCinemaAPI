@@ -70,7 +70,11 @@ class MovieListItemSchema(BaseModel):
     year: int
     time: int
     imdb: float
+    votes: int
     price: float
+    genres: list[GenreSchema]
+    stars: list[StarSchema]
+    directors: list[DirectorSchema]
 
     model_config = {"from_attributes": True}
 

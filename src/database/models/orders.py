@@ -2,18 +2,8 @@ from datetime import datetime
 import enum
 from decimal import Decimal
 from typing import List, Optional
-from sqlalchemy import (
-    ForeignKey,
-    DateTime,
-    Numeric,
-    Enum,
-    func
-)
-from sqlalchemy.orm import (
-    Mapped,
-    mapped_column,
-    relationship
-)
+from sqlalchemy import ForeignKey, DateTime, Numeric, Enum, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database.models.base import Base
 from database.models.accounts import UserModel
 from database.models.movies import MovieModel
@@ -36,20 +26,12 @@ class OrderModel(Base):
         nullable=False,
     )
     status: Mapped[OrderStatusEnum] = mapped_column(
-        Enum(OrderStatusEnum),
-        nullable=False,
-        default=OrderStatusEnum.PENDING
+        Enum(OrderStatusEnum), nullable=False, default=OrderStatusEnum.PENDING
     )
-    total_amount: Mapped[Optional[Decimal]] = mapped_column(
-        Numeric(10, 2),
-        nullable=True
-    )
+    total_amount: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
 
     user: Mapped["UserModel"] = relationship(back_populates="orders")
-    order_items: Mapped[List["OrderItemModel"]] = relationship(
-        back_populates="order",
-        cascade="all, delete"
-    )
+    order_items: Mapped[List["OrderItemModel"]] = relationship(back_populates="order", cascade="all, delete")
 
 
 class OrderItemModel(Base):
@@ -58,10 +40,7 @@ class OrderItemModel(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"), nullable=False)
     movie_id: Mapped[int] = mapped_column(ForeignKey("movies.id"), nullable=False)
-    price_at_order: Mapped[Decimal] = mapped_column(
-        Numeric(10, 2),
-        nullable=False
-    )
+    price_at_order: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
 
     order: Mapped["OrderModel"] = relationship(back_populates="order_items")
     movie: Mapped["MovieModel"] = relationship()

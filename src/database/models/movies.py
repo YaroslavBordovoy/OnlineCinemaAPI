@@ -73,9 +73,7 @@ MoviesDirectorsModel = Table(
 class GenreModel(Base):
     __tablename__ = "genres"
 
-    id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True
-    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
 
     movies: Mapped[list["MovieModel"]] = relationship(
@@ -89,14 +87,10 @@ class GenreModel(Base):
 class StarModel(Base):
     __tablename__ = "stars"
 
-    id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True
-    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
 
-    movies: Mapped[list["MovieModel"]] = relationship(
-        "MovieModel", secondary=MoviesStarsModel, back_populates="stars"
-    )
+    movies: Mapped[list["MovieModel"]] = relationship("MovieModel", secondary=MoviesStarsModel, back_populates="stars")
 
     def __repr__(self):
         return f"<Star(name='{self.name}')>"
@@ -105,9 +99,7 @@ class StarModel(Base):
 class DirectorModel(Base):
     __tablename__ = "directors"
 
-    id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True
-    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
 
     movies: Mapped[list["MovieModel"]] = relationship(
@@ -123,14 +115,10 @@ class DirectorModel(Base):
 class CertificationModel(Base):
     __tablename__ = "certifications"
 
-    id: Mapped[int] = mapped_column(
-        Integer, primary_key=True, autoincrement=True
-    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
 
-    movies: Mapped[list["MovieModel"]] = relationship(
-        "MovieModel", back_populates="certification"
-    )
+    movies: Mapped[list["MovieModel"]] = relationship("MovieModel", back_populates="certification")
 
     def __repr__(self):
         return f"<Certification(name='{self.name}')>"
@@ -156,12 +144,8 @@ class MovieModel(Base):
     description: Mapped[str] = mapped_column(Text, nullable=False)
     price: Mapped[float] = mapped_column(DECIMAL(10, 2), nullable=False)
 
-    certification_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("certifications.id"), nullable=False
-    )
-    certification: Mapped["CertificationModel"] = relationship(
-        "CertificationModel", back_populates="movies"
-    )
+    certification_id: Mapped[int] = mapped_column(Integer, ForeignKey("certifications.id"), nullable=False)
+    certification: Mapped["CertificationModel"] = relationship("CertificationModel", back_populates="movies")
 
     genres: Mapped[list["GenreModel"]] = relationship(
         "GenreModel", secondary=MoviesGenresModel, back_populates="movies"
@@ -173,15 +157,9 @@ class MovieModel(Base):
         back_populates="movies",
     )
 
-    stars: Mapped[list["StarModel"]] = relationship(
-        "StarModel", secondary=MoviesStarsModel, back_populates="movies"
-    )
+    stars: Mapped[list["StarModel"]] = relationship("StarModel", secondary=MoviesStarsModel, back_populates="movies")
 
-    __table_args__ = (
-        UniqueConstraint(
-            "name", "year", "time", name="unique_movie_constraint"
-        ),
-    )
+    __table_args__ = (UniqueConstraint("name", "year", "time", name="unique_movie_constraint"),)
 
     @classmethod
     def default_order_by(cls):

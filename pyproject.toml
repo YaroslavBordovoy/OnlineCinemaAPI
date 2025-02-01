@@ -74,8 +74,9 @@ ignore = [
     "W191",  # indentation contains tabs
     "D401",  # first line should be in imperative mood
     "I001",   # isort
-    "F401"
-
+    "F401",
+    "B008",
+    "B904"
 ]
 
 [tool.isort]

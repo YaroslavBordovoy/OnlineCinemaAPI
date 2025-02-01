@@ -1,6 +1,8 @@
 import uuid
+from enum import Enum
 
 from sqlalchemy import (
+    Boolean,
     Column,
     Integer,
     String,
@@ -12,8 +14,15 @@ from sqlalchemy import (
     Table,
 )
 from sqlalchemy.orm import mapped_column, Mapped, relationship
+from sqlalchemy import Enum as SQLAlchemyEnum
 
+from database.models.accounts import UserModel
 from database.models.base import Base
+
+
+class ReactionEnum(str, Enum):
+    LIKE = "Like"
+    DISLIKE = "Dislike"
 
 
 MoviesGenresModel = Table(
@@ -68,6 +77,50 @@ MoviesDirectorsModel = Table(
         nullable=False,
     ),
 )
+
+
+class ReactionModel(Base):
+    __tablename__ = "reactions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    reaction: Mapped[ReactionEnum] = mapped_column(
+        SQLAlchemyEnum(ReactionEnum), nullable=True
+    )
+
+    movie_id: Mapped[int] = mapped_column(Integer, ForeignKey("movies.id"), nullable=False)
+    movie: Mapped["MovieModel"] = relationship("MovieModel", back_populates="reactions")
+
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    user: Mapped["UserModel"] = relationship("UserModel", back_populates="reactions")
+
+
+class CommentModel(Base):
+    __tablename__ = "comments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    comment: Mapped[str] = mapped_column(Text, nullable=True)
+
+    movie_id: Mapped[int] = mapped_column(Integer, ForeignKey("movies.id"), nullable=False)
+    movie: Mapped["MovieModel"] = relationship("MovieModel", back_populates="reactions")
+
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    user: Mapped["UserModel"] = relationship("UserModel", back_populates="reactions")
+
+
+class FavoriteModel(Base):
+    __tablename__ = "favorites"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+
+    favorite: Mapped[bool] = mapped_column(Boolean, nullable=True)
+
+    movie_id: Mapped[int] = mapped_column(Integer, ForeignKey("movies.id"), nullable=False)
+    movie: Mapped["MovieModel"] = relationship("MovieModel", back_populates="reactions")
+
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    user: Mapped["UserModel"] = relationship("UserModel", back_populates="reactions")
 
 
 class GenreModel(Base):
@@ -155,6 +208,10 @@ class MovieModel(Base):
     gross: Mapped[float] = mapped_column(Float, nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     price: Mapped[float] = mapped_column(DECIMAL(10, 2), nullable=False)
+
+    reaction: Mapped["ReactionModel"] = relationship("ReactionModel", back_populates="movie", uselist=False, default_factory=None)
+    comment: Mapped["CommentModel"] = relationship("CommentModel", back_populates="movie", uselist=False, default_factory=None)
+    favorite: Mapped["FavoriteModel"] = relationship("FavoriteModel", back_populates="movie", uselist=False, default_factory=None)
 
     certification_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("certifications.id"), nullable=False

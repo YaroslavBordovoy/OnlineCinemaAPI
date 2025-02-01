@@ -1,15 +1,26 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import func
 
-from database.models.movies import MovieModel, CertificationModel, GenreModel, StarModel, DirectorModel
+from database.models.movies import (
+    MovieModel,
+    CertificationModel,
+    GenreModel,
+    StarModel,
+    DirectorModel,
+    ReactionModel,
+    ReactionEnum
+)
 from database.session_sqlite import get_sqlite_db as get_db
 from schemas.movies import (
     MovieListResponseSchema,
     MovieListItemSchema,
     MovieDetailSchema,
     MovieCreateSchema,
-    MovieUpdateSchema
+    MovieUpdateSchema,
+    ReactionResponseSchema,
+    ReactionSchema
 )
 
 
@@ -266,7 +277,21 @@ def get_movie_by_id(
             detail="Movie with the given ID was not found."
         )
 
-    return MovieDetailSchema.model_validate(movie)
+    likes_count = db.query(func.count()).filter(
+        ReactionModel.movie_id == movie_id,
+        ReactionModel.reaction == ReactionEnum.LIKE
+    ).scalar()
+
+    dislikes_count = db.query(func.count()).filter(
+        ReactionModel.movie_id == movie_id,
+        ReactionModel.reaction == ReactionEnum.DISLIKE
+    ).scalar()
+
+    movie_detail = MovieDetailSchema.model_validate(movie)
+    movie_detail.likes = likes_count
+    movie_detail.dislikes = dislikes_count
+
+    return movie_detail
 
 
 @router.delete(
@@ -393,3 +418,64 @@ def update_movie(
         raise HTTPException(status_code=400, detail="Invalid input data.")
     else:
         return {"detail": "Movie updated successfully."}
+
+
+@router.post(
+    "/movies/{movie_id}/reaction/",
+    response_model=ReactionResponseSchema,
+    summary="Add like or dislike to movie",
+    description=(
+            "<h3>This endpoint allows clients to like or dislike movie</h3>"
+    ),
+    responses={
+        404: {
+            "description": "No movies found.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "No movies found."}
+                }
+            },
+        },
+        401: {
+            "description": "Token has expired.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Token has expired."}
+                }
+            },
+        }
+    }
+)
+
+def like_dislike_movie(
+    movie_id: int,
+    reaction_data: ReactionSchema,
+    jwt_manager: JWTAuthManager = Depends(get_jwt_auth_manager),
+    token: str = Depends(get_token),
+    db: Session = Depends(get_db)
+):
+    movie = db.query(MovieModel).filter(MovieModel.id == movie_id).first()
+    if not movie:
+        raise HTTPException(status_code=404, detail="No movies found.")
+
+    try:
+        access_token = jwt_manager.decode_access_token(token)
+    except TokenExpiredError:
+        raise HTTPException(status_code=401, detail="Token has expired.")
+
+    user_id = access_token.get("user_id")
+
+    reaction_in_db = db.query(ReactionModel).filter(ReactionModel.movie_id == movie_id, ReactionModel.user_id == user_id).first()
+
+    if not reaction_in_db:
+        reaction_in_db = ReactionModel(movie_id=movie_id, user_id=user_id, reaction=reaction_data.reaction)
+        db.add(reaction_in_db)
+    elif reaction_in_db == reaction_data.reaction:
+        db.delete(reaction_in_db)
+    else:
+        reaction_in_db.reaction = reaction_data.reaction
+
+    db.commit()
+    db.refresh(reaction_in_db)
+    return reaction_in_db
+

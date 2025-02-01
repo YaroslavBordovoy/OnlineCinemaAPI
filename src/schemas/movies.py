@@ -1,6 +1,17 @@
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel, field_validator, Field
+
+from database.models.movies import ReactionEnum
+
+
+class ReactionResponseSchema(BaseModel):
+    movie_id: int
+    likes: int
+    dislikes: int
+
+    model_config = {"from_attributes": True}
 
 
 class GenreSchema(BaseModel):
@@ -60,6 +71,8 @@ class MovieDetailSchema(MovieBaseSchema):
     stars: list[StarSchema]
     directors: list[DirectorSchema]
     certification: CertificationSchema
+    likes: int
+    dislikes: int
 
     model_config = {"from_attributes": True}
 
@@ -118,3 +131,7 @@ class MovieUpdateSchema(BaseModel):
     price: float | None = Field(None, ge=0)
 
     model_config = {"from_attributes": True}
+
+
+class ReactionSchema(BaseModel):
+    reaction: Optional[ReactionEnum]

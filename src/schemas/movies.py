@@ -6,14 +6,6 @@ from pydantic import BaseModel, field_validator, Field
 from database.models.movies import ReactionEnum
 
 
-class ReactionResponseSchema(BaseModel):
-    movie_id: int
-    likes: int
-    dislikes: int
-
-    model_config = {"from_attributes": True}
-
-
 class GenreSchema(BaseModel):
     id: int
     name: str
@@ -139,3 +131,28 @@ class MovieUpdateSchema(BaseModel):
 
 class ReactionSchema(BaseModel):
     reaction: Optional[ReactionEnum]
+
+
+class ReactionResponseSchema(BaseModel):
+    movie_id: int
+    likes: int
+    dislikes: int
+
+    model_config = {"from_attributes": True}
+
+
+class CommentSchema(BaseModel):
+    comment: str
+
+
+class CommentResponseSchema(BaseModel):
+    movie_id: int
+    comment: str
+
+    model_config = {"from_attributes": True}
+
+
+class FavoriteSchema(BaseModel):
+    favorite: bool
+
+    model_config = {"from_attributes": True}

@@ -11,7 +11,7 @@ from database.models.movies import (
     StarModel,
     DirectorModel,
     ReactionModel,
-    ReactionEnum
+    ReactionEnum, CommentModel, FavoriteModel
 )
 from database.session_sqlite import get_sqlite_db as get_db
 from schemas.movies import (
@@ -21,9 +21,9 @@ from schemas.movies import (
     MovieCreateSchema,
     MovieUpdateSchema,
     ReactionResponseSchema,
-    ReactionSchema
+    ReactionSchema, CommentResponseSchema, CommentSchema, FavoriteSchema
 )
-
+from security.http import get_token
 
 router = APIRouter()
 
@@ -457,7 +457,6 @@ def update_movie(
         }
     }
 )
-
 def like_dislike_movie(
     movie_id: int,
     reaction_data: ReactionSchema,
@@ -490,3 +489,107 @@ def like_dislike_movie(
     db.refresh(reaction_in_db)
     return reaction_in_db
 
+
+@router.post(
+    "/movies/{movie_id}/comment/",
+    response_model=CommentResponseSchema,
+    summary="Add comment to movie",
+    description=(
+            "<h3>This endpoint allows clients to comment movie</h3>"
+    ),
+    responses={
+        404: {
+            "description": "No movies found.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "No movies found."}
+                }
+            },
+        },
+        401: {
+            "description": "Token has expired.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Token has expired."}
+                }
+            },
+        }
+    }
+)
+def comment_movie(
+    movie_id: int,
+    comment_data: CommentSchema,
+    jwt_manager: JWTAuthManager = Depends(get_jwt_auth_manager),
+    token: str = Depends(get_token),
+    db: Session = Depends(get_db)
+):
+    movie = db.query(MovieModel).filter(MovieModel.id == movie_id).first()
+    if not movie:
+        raise HTTPException(status_code=404, detail="No movies found.")
+
+    try:
+        access_token = jwt_manager.decode_access_token(token)
+    except TokenExpiredError:
+        raise HTTPException(status_code=401, detail="Token has expired.")
+
+    user_id = access_token.get("user_id")
+
+    comment = CommentModel(movie_id=movie_id, user_id=user_id, comment=comment_data.comment)
+    db.add(comment)
+    db.commit()
+    db.refresh(comment)
+    return CommentResponseSchema
+
+
+@router.post(
+    "/movies/{movie_id}/favorite/",
+    response_model=MovieListResponseSchema,
+    summary="Add movie to favorites",
+    description=(
+            "<h3>This endpoint allows clients to add movie to favorites</h3>"
+    ),
+    responses={
+        404: {
+            "description": "No movies found.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "No movies found."}
+                }
+            },
+        },
+        401: {
+            "description": "Token has expired.",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Token has expired."}
+                }
+            },
+        }
+    }
+)
+def favorite_movie(
+    movie_id: int,
+    favorite_data: FavoriteSchema,
+    jwt_manager: JWTAuthManager = Depends(get_jwt_auth_manager),
+    token: str = Depends(get_token),
+    db: Session = Depends(get_db)
+):
+    movie = db.query(MovieModel).filter(MovieModel.id == movie_id).first()
+
+    if not movie:
+        raise HTTPException(status_code=404, detail="No movies found.")
+
+    try:
+        access_token = jwt_manager.decode_access_token(token)
+    except TokenExpiredError:
+        raise HTTPException(status_code=401, detail="Token has expired.")
+
+    user_id = access_token.get("user_id")
+
+    favorite = FavoriteModel(movie_id=movie_id, user_id=user_id, favorite=favorite_data.favorite)
+    favorite.favorite = favorite_data.favorite
+
+    db.add(favorite)
+    db.commit()
+    db.refresh(favorite)
+    return MovieListResponseSchema

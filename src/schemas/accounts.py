@@ -27,3 +27,7 @@ class UserRegistrationResponseSchema(BaseModel):
     email: EmailStr
 
     model_config = {"from_attributes": True}
+
+
+class UserActivationTokenRequestSchema(UserBaseSchema):
+    token: str

@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from database.models.accounts import UserModel, UserGroupModel, UserGroupEnum
+from database.models.accounts import UserModel, UserGroupModel, UserGroupEnum, ActivationTokenModel
 from schemas.accounts import UserRegistrationRequestSchema
 
 
@@ -16,6 +16,13 @@ def create_user(user_data: UserRegistrationRequestSchema, db: Session) -> UserMo
         )
 
     user_group = db.query(UserGroupModel).filter_by(name=UserGroupEnum.USER).first()
+
+    if not user_group:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="User group not found."
+        )
+
     try:
         new_user = UserModel.create(
             email=user_data.email,
@@ -25,7 +32,10 @@ def create_user(user_data: UserRegistrationRequestSchema, db: Session) -> UserMo
         db.add(new_user)
         db.flush()
 
-
+        activation_token = ActivationTokenModel(user_id=new_user.id)
+        db.add(activation_token)
+        db.commit()
+        db.refresh(new_user)
 
         return new_user
     except SQLAlchemyError:

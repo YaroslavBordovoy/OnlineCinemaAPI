@@ -6,12 +6,36 @@ from database import get_db
 from services.user_service import create_user
 
 
-router = APIRouter(prefix="/accounts", tags=["Accounts"])
+router = APIRouter()
 
 
 @router.post(
     "/register/",
     response_model=UserRegistrationResponseSchema,
+    summary="Register a new user",
+    description="Register a new user with an email and password.",
+    responses={
+        409: {
+            "description": "Conflict - User with this email already exists.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "A user with this email test@example.com already exists."
+                    }
+                }
+            },
+        },
+        500: {
+            "description": "Internal Server Error - An error occurred during user creation.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "An error occurred during user creation."
+                    }
+                }
+            },
+        },
+    },
     status_code=status.HTTP_201_CREATED
 )
 def register(user_data: UserRegistrationRequestSchema, db: Session = Depends(get_db)):

@@ -1,5 +1,5 @@
-from typing import Any
-
+from typing import Annotated
+from annotated_types import MinLen
 from pydantic import BaseModel, EmailStr, field_validator
 from database import account_validators
 
@@ -9,16 +9,16 @@ class UserBaseSchema(BaseModel):
 
     @field_validator("email")
     @classmethod
-    def validate_email(cls, value: Any):
+    def validate_email(cls, value: str):
         return account_validators.validate_email(value)
 
 
 class UserRegistrationRequestSchema(UserBaseSchema):
-    password: str
+    password: Annotated[str, MinLen(8)]
 
     @field_validator("password")
     @classmethod
-    def validate_password(cls, value: Any):
+    def validate_password(cls, value: str):
         return account_validators.validate_password_strength(value)
 
 

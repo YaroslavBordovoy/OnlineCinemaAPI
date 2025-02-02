@@ -198,7 +198,7 @@ def request_password_reset(
 
 
 @router.post(
-    "/reset-password/complete/",
+    "/password-reset/complete/",
     response_model=MessageResponseSchema,
     summary="Complete reset password",
     description="<h3>Changing password using the transferred email, token and new password</h3>",

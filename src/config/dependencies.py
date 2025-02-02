@@ -2,8 +2,6 @@ import os
 from dotenv import load_dotenv
 from fastapi import Depends
 
-from fastapi import Depends
-
 from config.settings import TestingSettings, Settings, BaseAppSettings
 from security.jwt_interface import JWTAuthManagerInterface
 from security.token_manager import JWTAuthManager

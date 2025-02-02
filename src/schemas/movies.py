@@ -3,7 +3,7 @@ from typing import Optional
 
 from pydantic import BaseModel, field_validator, Field
 
-from database.models.movies import ReactionEnum
+from database.models.films_features import ReactionEnum
 
 
 class GenreSchema(BaseModel):

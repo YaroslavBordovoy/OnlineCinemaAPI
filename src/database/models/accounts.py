@@ -111,6 +111,12 @@ class UserModel(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+
+    # reactions, likes and favorites for every user
+    reactions: Mapped[list["ReactionModel"]] = relationship("ReactionModel", backref="user_reactions", uselist=False)
+    comments: Mapped[list["CommentModel"]] = relationship("CommentModel", backref="user_comments", uselist=False)
+    favorites: Mapped[list["FavoriteModel"]] = relationship("FavoriteModel", backref="user_favorites", uselist=False)
+
     _hashed_password: Mapped[str] = mapped_column(
         "hashed_password",
         String(255),

@@ -1,6 +1,7 @@
 import os
 
 import stripe
+from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
@@ -9,6 +10,8 @@ from database.models.payments import PaymentModel, PaymentStatus
 from database.session_sqlite import get_sqlite_db as get_db
 from schemas.payments import PaymentCreate
 
+
+load_dotenv()
 
 stripe.api_key = os.environ["STRIPE_SECRET_KEY"]
 

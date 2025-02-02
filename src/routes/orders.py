@@ -16,7 +16,7 @@ from schemas.orders import (
 )
 from security.http import get_token
 from security.jwt_interface import JWTAuthManagerInterface
-from exceptions import TokenExpiredError, InvalidTokenError
+from exceptions import BaseSecurityError
 
 router = APIRouter()
 
@@ -34,7 +34,7 @@ def create_order(
     try:
         payload = jwt_manager.decode_access_token(token)
         payload_user_id = payload.get("user_id")
-    except (TokenExpiredError, InvalidTokenError) as e:
+    except BaseSecurityError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e)
@@ -93,7 +93,7 @@ def get_orders(
     try:
         payload = jwt_manager.decode_access_token(token)
         user_id = payload.get("user_id")
-    except (TokenExpiredError, InvalidTokenError) as e:
+    except BaseSecurityError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e)
@@ -126,7 +126,7 @@ def get_all_orders(
     try:
         payload = jwt_manager.decode_access_token(token)
         token_user_id = payload.get("user_id")
-    except (TokenExpiredError, InvalidTokenError) as e:
+    except BaseSecurityError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e)

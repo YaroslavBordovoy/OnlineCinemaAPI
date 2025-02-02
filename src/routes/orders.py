@@ -257,3 +257,71 @@ def get_order(
         )
 
     return order
+
+
+@router.post(
+    "/{order_id}/to-cart",
+)
+def order_to_cart(
+        order_id: int,
+        token: str = Depends(get_token),
+        jwt_manager=Depends(get_jwt_auth_manager),
+        db: Session = Depends(get_db)
+):
+    try:
+        payload = jwt_manager.decode_access_token(token)
+        user_id = payload.get("user_id")
+    except BaseSecurityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e)
+        )
+
+    user = db.query(UserModel).join(UserGroupModel).filter(UserModel.id == user_id).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token or user not found."
+        )
+
+    order = (
+        db
+        .query(OrderModel)
+        .join(OrderItemModel)
+        .filter(OrderModel.id == order_id)
+        .first()
+    )
+
+    if not order:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Order not found."
+        )
+
+    if order.user_id != user.id and user.group.name != UserGroupEnum.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to access this resource."
+        )
+
+    cart = db.query(CartModel).filter(CartModel.user_id == user.id).first()
+
+    if not cart:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Cart not found."
+        )
+
+    for order_item in order.order_items:
+        cart_item = CartItemModel(
+            cart_id=cart.id,
+            movie_id=order_item.movie_id,
+        )
+        db.add(cart_item)
+
+    db.commit()
+
+    return {
+        "detail": "Orders added to cart"
+    }

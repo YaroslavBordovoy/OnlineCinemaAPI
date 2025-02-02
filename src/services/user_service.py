@@ -223,12 +223,9 @@ def refresh_token(
     jwt_auth_manager: JWTAuthManagerInterface,
 ) -> RefreshTokenResponseSchema:
     try:
-        print(f"Received refresh token: {user_data.refresh_token}")
         decoded_token = jwt_auth_manager.decode_refresh_token(user_data.refresh_token)
-        print(f"Decoded token: {decoded_token}")
         user_id = decoded_token.get("user_id")
     except BaseSecurityError as error:
-        print(f"Token decoding failed: {error}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(error),

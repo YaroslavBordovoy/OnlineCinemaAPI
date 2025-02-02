@@ -79,7 +79,7 @@ def register(user_data: UserRegistrationRequestSchema, db: Session = Depends(get
             },
         },
         404: {
-            "description": "NOT FOUND - User with this email not found.",
+            "description": "Not found - User with this email not found.",
             "content": {
                 "application/json": {
                     "example": {
@@ -205,6 +205,40 @@ def request_password_reset_complete(
 @router.post(
     "/refresh/",
     response_model=RefreshTokenResponseSchema,
+    summary="Get a new access token",
+    description="<h3>Getting a new access token using a refresh token</h3>",
+    responses={
+        400: {
+            "description": "Bad Request - Token has expired or invalid token.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Token has expired or invalid token."
+                    }
+                }
+            },
+        },
+        401: {
+            "description": "Unauthorized - Refresh token not found.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Refresh token not found."
+                    }
+                }
+            },
+        },
+        404: {
+            "description": "Not Found - User not found.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "User not found."
+                    }
+                }
+            },
+        },
+    },
     status_code=status.HTTP_200_OK,
 )
 def refresh(

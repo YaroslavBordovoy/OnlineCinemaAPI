@@ -69,10 +69,6 @@ class RefreshTokenResponseSchema(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class LogoutRequestSchema(RefreshTokenRequestSchema):
-    pass
-
-
 class PasswordChangeRequestSchema(UserRegistrationRequestSchema):
     new_password: str
 

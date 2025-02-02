@@ -2,7 +2,9 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from config import get_jwt_auth_manager
+from services import get_current_user
 from database import get_db
+from database.models.accounts import UserModel
 from schemas.accounts import (
     UserRegistrationRequestSchema,
     UserRegistrationResponseSchema,
@@ -14,7 +16,6 @@ from schemas.accounts import (
     PasswordResetRequestCompleteSchema,
     RefreshTokenRequestSchema,
     RefreshTokenResponseSchema,
-    LogoutRequestSchema,
     PasswordChangeRequestSchema,
 )
 from security.jwt_interface import JWTAuthManagerInterface
@@ -161,14 +162,25 @@ def login(
     response_model=MessageResponseSchema,
     summary="Logout user",
     description="<h3>Logout user and delete refresh token</h3>",
+    responses={
+        500: {
+            "description": "Internal Server Error - An error occurred during user logout.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "An error occurred during logout."
+                    }
+                }
+            },
+        },
+    },
     status_code=status.HTTP_200_OK,
 )
 def logout(
-    user_data: LogoutRequestSchema,
     db: Session = Depends(get_db),
-    jwt_auth_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+    user: UserModel = Depends(get_current_user)
 ):
-    return logout_user(user_data=user_data, db=db, jwt_auth_manager=jwt_auth_manager)
+    return logout_user(db=db, user=user)
 
 
 @router.post(
@@ -253,8 +265,9 @@ def request_password_reset_complete(
 def request_change_password(
     user_data: PasswordChangeRequestSchema,
     db: Session = Depends(get_db),
+    user: UserModel = Depends(get_current_user),
 ):
-    return change_user_password(user_data=user_data, db=db)
+    return change_user_password(user_data=user_data, db=db, user=user)
 
 
 @router.post(

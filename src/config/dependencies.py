@@ -1,4 +1,5 @@
 import os
+
 from dotenv import load_dotenv
 from fastapi import Depends
 
@@ -8,6 +9,7 @@ from security.token_manager import JWTAuthManager
 
 
 load_dotenv()
+
 
 def get_settings() -> BaseAppSettings:
     environment = os.getenv("ENVIRONMENT", "developing")

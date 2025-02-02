@@ -14,6 +14,8 @@ from schemas.accounts import (
     PasswordResetRequestCompleteSchema,
     RefreshTokenRequestSchema,
     RefreshTokenResponseSchema,
+    LogoutRequestSchema
+,
 )
 from security.jwt_interface import JWTAuthManagerInterface
 from services.user_service import (
@@ -23,6 +25,7 @@ from services.user_service import (
     password_reset_request,
     password_reset_complete,
     refresh_token,
+    logout_user,
 )
 
 
@@ -145,11 +148,24 @@ def activate(user_data: UserActivationTokenRequestSchema, db: Session = Depends(
     status_code=status.HTTP_200_OK,
 )
 def login(
-        user_data: LoginRequestSchema,
-        db: Session = Depends(get_db),
-        jwt_auth_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+    user_data: LoginRequestSchema,
+    db: Session = Depends(get_db),
+    jwt_auth_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
 ):
     return login_user(user_data=user_data, db=db, jwt_auth_manager=jwt_auth_manager)
+
+
+@router.post(
+    "/logout/",
+    response_model=MessageResponseSchema,
+    status_code=status.HTTP_200_OK,
+)
+def logout(
+    user_data: LogoutRequestSchema,
+    db: Session = Depends(get_db),
+    jwt_auth_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+):
+    return logout_user(user_data=user_data, db=db, jwt_auth_manager=jwt_auth_manager)
 
 
 @router.post(

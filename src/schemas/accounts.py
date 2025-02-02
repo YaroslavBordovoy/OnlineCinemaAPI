@@ -67,3 +67,7 @@ class RefreshTokenResponseSchema(BaseModel):
     access_token: str
 
     model_config = {"from_attributes": True}
+
+
+class LogoutRequestSchema(RefreshTokenRequestSchema):
+    pass

@@ -23,6 +23,7 @@ from schemas.accounts import (
     PasswordResetRequestCompleteSchema,
     RefreshTokenRequestSchema,
     RefreshTokenResponseSchema,
+    LogoutRequestSchema,
 )
 from security.jwt_interface import JWTAuthManagerInterface
 
@@ -108,9 +109,9 @@ def activate_user(user_data: UserActivationTokenRequestSchema, db: Session) -> M
 
 
 def login_user(
-        user_data: LoginRequestSchema,
-        db: Session,
-        jwt_auth_manager: JWTAuthManagerInterface,
+    user_data: LoginRequestSchema,
+    db: Session,
+    jwt_auth_manager: JWTAuthManagerInterface,
 ) -> LoginResponseSchema:
     user = db.query(UserModel).filter_by(email=user_data.email).first()
 
@@ -147,6 +148,23 @@ def login_user(
         )
 
 
+def logout_user(
+    user_data: LogoutRequestSchema,
+    db: Session,
+    jwt_auth_manager: JWTAuthManagerInterface,
+) -> MessageResponseSchema:
+    try:
+        decoded_token = jwt_auth_manager.decode_refresh_token(user_data.refresh_token)
+        user_id = decoded_token.get("user_id")
+    except BaseSecurityError:
+        return MessageResponseSchema(message="Logout successful.")
+
+    existing_refresh_token = db.query(RefreshTokenModel).filter_by(user_id=user_id).delete()
+    db.commit()
+
+    return MessageResponseSchema(message="Logout successful.")
+
+
 def password_reset_request(user_data: PasswordResetRequestSchema, db: Session) -> MessageResponseSchema:
     user = db.query(UserModel).filter_by(email=user_data.email).first()
 
@@ -171,8 +189,8 @@ def password_reset_request(user_data: PasswordResetRequestSchema, db: Session) -
 
 
 def password_reset_complete(
-        user_data: PasswordResetRequestCompleteSchema,
-        db: Session,
+    user_data: PasswordResetRequestCompleteSchema,
+    db: Session,
 ) -> MessageResponseSchema | HTTPException:
     user = db.query(UserModel).filter_by(email=user_data.email).first()
 

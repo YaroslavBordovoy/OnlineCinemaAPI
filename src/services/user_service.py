@@ -16,6 +16,7 @@ from schemas.accounts import (
     UserRegistrationRequestSchema,
     UserActivationTokenRequestSchema,
     LoginRequestSchema, LoginResponseSchema, PasswordResetRequestSchema, MessageResponseSchema,
+    PasswordResetRequestCompleteSchema,
 )
 from security.jwt_interface import JWTAuthManagerInterface
 
@@ -162,4 +163,50 @@ def password_reset_request(user_data: PasswordResetRequestSchema, db: Session) -
             detail="An error occurred during request reset the password.",
         )
 
+
+def password_reset_complete(
+        user_data: PasswordResetRequestCompleteSchema,
+        db: Session,
+) -> MessageResponseSchema | HTTPException:
+    user = db.query(UserModel).filter_by(email=user_data.email).first()
+
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email or token."
+        )
+
+    if user.verify_password(raw_password=user_data.password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot assign the same password."
+        )
+
+    reset_token = db.query(PasswordResetTokenModel).filter_by(user_id=user.id).first()
+
+    token_expire = reset_token.expires_at.replace(tzinfo=timezone.utc)
+
+    if not reset_token or reset_token.token != user_data.token or token_expire < datetime.now(timezone.utc):
+        if reset_token:
+            db.delete(reset_token)
+            db.commit()
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email or token."
+        )
+
+    try:
+        user.password = user_data.password
+        db.delete(reset_token)
+        db.commit()
+
+        return MessageResponseSchema(message="Password reset successfully.")
+    except SQLAlchemyError:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while resetting the password.",
+        )
 

@@ -11,9 +11,16 @@ from schemas.accounts import (
     LoginResponseSchema,
     PasswordResetRequestSchema,
     MessageResponseSchema,
+    PasswordResetRequestCompleteSchema,
 )
 from security.jwt_interface import JWTAuthManagerInterface
-from services.user_service import create_user, activate_user, login_user, password_reset_request
+from services.user_service import (
+    create_user,
+    activate_user,
+    login_user,
+    password_reset_request,
+    password_reset_complete,
+)
 
 
 router = APIRouter()
@@ -154,3 +161,39 @@ def request_password_reset(
     db: Session = Depends(get_db),
 ):
     return password_reset_request(user_data=user_data, db=db)
+
+
+@router.post(
+    "/reset-password/complete/",
+    response_model=MessageResponseSchema,
+    summary="Complete reset password",
+    description="<h3>Changing password using the transferred email, token and new password</h3>",
+    responses={
+        400: {
+            "description": "Bad Request - Invalid email or token.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Invalid email or token."
+                    }
+                }
+            },
+        },
+        500: {
+            "description": "Internal Server Error - An error occurred during user login.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "An error occurred during login."
+                    }
+                }
+            },
+        },
+    },
+    status_code=status.HTTP_200_OK,
+)
+def request_password_reset_complete(
+    user_data: PasswordResetRequestCompleteSchema,
+    db: Session = Depends(get_db),
+):
+    return password_reset_complete(user_data=user_data, db=db)

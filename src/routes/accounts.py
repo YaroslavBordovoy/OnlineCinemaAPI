@@ -12,6 +12,8 @@ from schemas.accounts import (
     PasswordResetRequestSchema,
     MessageResponseSchema,
     PasswordResetRequestCompleteSchema,
+    RefreshTokenRequestSchema,
+    RefreshTokenResponseSchema,
 )
 from security.jwt_interface import JWTAuthManagerInterface
 from services.user_service import (
@@ -20,6 +22,7 @@ from services.user_service import (
     login_user,
     password_reset_request,
     password_reset_complete,
+    refresh_token,
 )
 
 
@@ -197,3 +200,16 @@ def request_password_reset_complete(
     db: Session = Depends(get_db),
 ):
     return password_reset_complete(user_data=user_data, db=db)
+
+
+@router.post(
+    "/refresh/",
+    response_model=RefreshTokenResponseSchema,
+    status_code=status.HTTP_200_OK,
+)
+def refresh(
+    user_data: RefreshTokenRequestSchema,
+    db: Session = Depends(get_db),
+    jwt_auth_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+):
+    return refresh_token(user_data=user_data, db=db, jwt_auth_manager=jwt_auth_manager)

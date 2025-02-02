@@ -12,11 +12,17 @@ from database.models.accounts import (
     RefreshTokenModel,
     PasswordResetTokenModel,
 )
+from exceptions import BaseSecurityError
 from schemas.accounts import (
     UserRegistrationRequestSchema,
     UserActivationTokenRequestSchema,
-    LoginRequestSchema, LoginResponseSchema, PasswordResetRequestSchema, MessageResponseSchema,
+    LoginRequestSchema,
+    LoginResponseSchema,
+    PasswordResetRequestSchema,
+    MessageResponseSchema,
     PasswordResetRequestCompleteSchema,
+    RefreshTokenRequestSchema,
+    RefreshTokenResponseSchema,
 )
 from security.jwt_interface import JWTAuthManagerInterface
 
@@ -210,3 +216,40 @@ def password_reset_complete(
             detail="An error occurred while resetting the password.",
         )
 
+
+def refresh_token(
+    user_data: RefreshTokenRequestSchema,
+    db: Session,
+    jwt_auth_manager: JWTAuthManagerInterface,
+) -> RefreshTokenResponseSchema:
+    try:
+        print(f"Received refresh token: {user_data.refresh_token}")
+        decoded_token = jwt_auth_manager.decode_refresh_token(user_data.refresh_token)
+        print(f"Decoded token: {decoded_token}")
+        user_id = decoded_token.get("user_id")
+    except BaseSecurityError as error:
+        print(f"Token decoding failed: {error}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(error),
+        )
+
+    refresh_token_exist = db.query(RefreshTokenModel).filter_by(token=user_data.refresh_token).first()
+
+    if not refresh_token_exist:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token not found.",
+        )
+
+    user = db.query(UserModel).filter_by(id=user_id).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found.",
+        )
+
+    new_access_token = jwt_auth_manager.create_access_token({"user_id": user_id})
+
+    return RefreshTokenResponseSchema(access_token=new_access_token)

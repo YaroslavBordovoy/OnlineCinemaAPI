@@ -57,3 +57,13 @@ class PasswordResetRequestSchema(UserBaseSchema):
 
 class PasswordResetRequestCompleteSchema(UserRegistrationRequestSchema):
     token: str
+
+
+class RefreshTokenRequestSchema(BaseModel):
+    refresh_token: str
+
+
+class RefreshTokenResponseSchema(BaseModel):
+    access_token: str
+
+    model_config = {"from_attributes": True}

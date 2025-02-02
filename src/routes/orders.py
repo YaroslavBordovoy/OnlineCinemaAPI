@@ -22,7 +22,7 @@ router = APIRouter()
 
 
 @router.post(
-    "/orders",
+    "/",
     response_model=OrderResponseSchema
 )
 def create_order(
@@ -85,7 +85,7 @@ def create_order(
 
 
 @router.get(
-    "/orders/",
+    "/",
     response_model=OrderListResponseSchema
 )
 def get_orders(
@@ -114,7 +114,7 @@ def get_orders(
     return orders
 
 @router.get(
-    "/order/all",
+    "/all/",
     response_model=OrderListResponseSchema
 )
 def get_all_orders(

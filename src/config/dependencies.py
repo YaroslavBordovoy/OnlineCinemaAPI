@@ -13,10 +13,6 @@ def get_settings() -> BaseAppSettings:
     environment = os.getenv("ENVIRONMENT", "developing")
     if environment == "testing":
         return TestingSettings()
-    secret_key_access = os.getenv("SECRET_KEY_ACCESS")
-    secret_key_refresh = os.getenv("SECRET_KEY_REFRESH")
-    print(f"ENV SECRET_KEY_ACCESS: {secret_key_access}")
-    print(f"ENV SECRET_KEY_REFRESH: {secret_key_refresh}")
     return Settings()
 
 

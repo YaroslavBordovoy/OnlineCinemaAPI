@@ -4,8 +4,18 @@ from fastapi import HTTPException, status
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from database.models.accounts import UserModel, UserGroupModel, UserGroupEnum, ActivationTokenModel
-from schemas.accounts import UserRegistrationRequestSchema, UserActivationTokenRequestSchema
+from database.models.accounts import (
+    UserModel,
+    UserGroupModel,
+    UserGroupEnum,
+    ActivationTokenModel, RefreshTokenModel,
+)
+from schemas.accounts import (
+    UserRegistrationRequestSchema,
+    UserActivationTokenRequestSchema,
+    LoginRequestSchema, LoginResponseSchema,
+)
+from security.jwt_interface import JWTAuthManagerInterface
 
 
 def create_user(user_data: UserRegistrationRequestSchema, db: Session) -> UserModel | HTTPException:
@@ -81,7 +91,48 @@ def activate_user(user_data: UserActivationTokenRequestSchema, db: Session) -> d
         return {"message": "User account activated successfully."}
     except SQLAlchemyError:
         db.rollback()
+
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred during account activation.",
+        )
+
+
+def login_user(
+        user_data: LoginRequestSchema,
+        db: Session,
+        jwt_auth_manager: JWTAuthManagerInterface,
+) -> LoginResponseSchema:
+    user = db.query(UserModel).filter_by(email=user_data.email).first()
+
+    if not user or not user.verify_password(raw_password=user_data.password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password."
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is not activated."
+        )
+
+    try:
+        access_token = jwt_auth_manager.create_access_token({"user_id": user.id})
+        refresh_token = jwt_auth_manager.create_refresh_token({"user_id": user.id})
+        db_refresh_token = RefreshTokenModel(user_id=user.id, token=refresh_token)
+        db.add(db_refresh_token)
+        db.commit()
+
+        return LoginResponseSchema(
+            access_token=access_token,
+            refresh_token=refresh_token,
+        )
+
+    except SQLAlchemyError:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred during login.",
         )

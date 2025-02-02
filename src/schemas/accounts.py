@@ -31,3 +31,13 @@ class UserRegistrationResponseSchema(BaseModel):
 
 class UserActivationTokenRequestSchema(UserBaseSchema):
     token: str
+
+
+class LoginRequestSchema(UserRegistrationRequestSchema):
+    pass
+
+
+class LoginResponseSchema(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"

@@ -8,10 +8,10 @@ from database.models.orders import OrderStatusEnum
 class OrderItemSchema(BaseModel):
     id: int
     movie_id: int
-    price_at_order: Decimal
 
 class OrderItemResponseSchema(OrderItemSchema):
     order_id: int
+    price_at_order: Decimal
 
 
 class OrderBaseSchema(BaseModel):

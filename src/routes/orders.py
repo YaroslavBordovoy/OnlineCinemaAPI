@@ -53,14 +53,6 @@ def create_order(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token or user not found.")
 
-    movies = (
-        db
-        .query(MovieModel)
-        .filter(
-            MovieModel.id.in_(item.movie_id for item in order_data.items)
-        )
-        .all()
-    )
     new_order = OrderModel(
         user_id=user.id,
         total_amount=order_data.total_amount,
@@ -70,13 +62,18 @@ def create_order(
     db.add(new_order)
     db.flush()
 
-    for movie in movies:
-        order_item = OrderItemModel(
-            order_id=new_order.id,
-            movie_id=movie.id,
-            price_at_order=Decimal(movie.price)
-        )
-        db.add(order_item)
+    for order_item in order_data.items:
+        movie = db.query(MovieModel).filter(MovieModel.id == order_item.movie_id).first()
+        if not movie:
+            pass
+            # ToDO check movie
+        else:
+            item = OrderItemModel(
+                order_id=new_order.id,
+                movie_id=order_item.movie_id,
+                price_at_order=Decimal(movie.price)
+            )
+            db.add(item)
 
     db.commit()
     db.refresh(new_order)

@@ -30,7 +30,7 @@ class OrderModel(Base):
     )
     total_amount: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
 
-    user: Mapped["UserModel"] = relationship(back_populates="orders")
+    user: Mapped["UserModel"] = relationship("UserModel")
     order_items: Mapped[List["OrderItemModel"]] = relationship(back_populates="order", cascade="all, delete")
 
 
@@ -43,4 +43,4 @@ class OrderItemModel(Base):
     price_at_order: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
 
     order: Mapped["OrderModel"] = relationship(back_populates="order_items")
-    movie: Mapped["MovieModel"] = relationship()
+    movie: Mapped["MovieModel"] = relationship("MovieModel")

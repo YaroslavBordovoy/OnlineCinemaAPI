@@ -1,7 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
-from database.models.base import Base
 from config.dependencies import get_settings
 
 settings = get_settings()
@@ -18,6 +17,3 @@ def get_sqlite_db() -> Session:
         yield db
     finally:
         db.close()
-
-
-Base.metadata.create_all(sqlite_engine)

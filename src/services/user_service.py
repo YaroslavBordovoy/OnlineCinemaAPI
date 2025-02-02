@@ -8,12 +8,14 @@ from database.models.accounts import (
     UserModel,
     UserGroupModel,
     UserGroupEnum,
-    ActivationTokenModel, RefreshTokenModel,
+    ActivationTokenModel,
+    RefreshTokenModel,
+    PasswordResetTokenModel,
 )
 from schemas.accounts import (
     UserRegistrationRequestSchema,
     UserActivationTokenRequestSchema,
-    LoginRequestSchema, LoginResponseSchema,
+    LoginRequestSchema, LoginResponseSchema, PasswordResetRequestSchema, MessageResponseSchema,
 )
 from security.jwt_interface import JWTAuthManagerInterface
 
@@ -59,7 +61,7 @@ def create_user(user_data: UserRegistrationRequestSchema, db: Session) -> UserMo
         )
 
 
-def activate_user(user_data: UserActivationTokenRequestSchema, db: Session) -> dict | HTTPException:
+def activate_user(user_data: UserActivationTokenRequestSchema, db: Session) -> MessageResponseSchema | HTTPException:
     user = db.query(UserModel).filter_by(email=user_data.email).first()
 
     if not user:
@@ -88,7 +90,7 @@ def activate_user(user_data: UserActivationTokenRequestSchema, db: Session) -> d
         db.delete(activation_token)
         db.commit()
 
-        return {"message": "User account activated successfully."}
+        return MessageResponseSchema(message="User account activated successfully.")
     except SQLAlchemyError:
         db.rollback()
 
@@ -136,3 +138,28 @@ def login_user(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred during login.",
         )
+
+
+def password_reset_request(user_data: PasswordResetRequestSchema, db: Session) -> MessageResponseSchema:
+    user = db.query(UserModel).filter_by(email=user_data.email).first()
+
+    if not user or not user.is_active:
+        return MessageResponseSchema(message="If you are registered, you will receive an email with instructions.")
+
+    db.query(PasswordResetTokenModel).filter_by(user_id=user.id).delete()
+
+    try:
+        new_reset_token = PasswordResetTokenModel(user_id=user.id)
+        db.add(new_reset_token)
+        db.commit()
+
+        return MessageResponseSchema(message="If you are registered, you will receive an email with instructions.")
+    except SQLAlchemyError:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred during request reset the password.",
+        )
+
+

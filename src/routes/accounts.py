@@ -1,15 +1,19 @@
 from fastapi import APIRouter, Depends, status
+from sqlalchemy.orm import Session
 
 from config import get_jwt_auth_manager
+from database import get_db
 from schemas.accounts import (
     UserRegistrationRequestSchema,
     UserRegistrationResponseSchema,
-    UserActivationTokenRequestSchema, LoginRequestSchema, LoginResponseSchema,
+    UserActivationTokenRequestSchema,
+    LoginRequestSchema,
+    LoginResponseSchema,
+    PasswordResetRequestSchema,
+    MessageResponseSchema,
 )
-from sqlalchemy.orm import Session
-from database import get_db
 from security.jwt_interface import JWTAuthManagerInterface
-from services.user_service import create_user, activate_user, login_user
+from services.user_service import create_user, activate_user, login_user, password_reset_request
 
 
 router = APIRouter()
@@ -50,6 +54,7 @@ def register(user_data: UserRegistrationRequestSchema, db: Session = Depends(get
 
 @router.post(
     "/activate/",
+    response_model=MessageResponseSchema,
     summary="Activate a user account",
     description="<h3>Activate a user account with an activation token</h3>",
     responses={
@@ -135,3 +140,17 @@ def login(
         jwt_auth_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
 ):
     return login_user(user_data=user_data, db=db, jwt_auth_manager=jwt_auth_manager)
+
+
+@router.post(
+    "/password-reset/request/",
+    response_model=MessageResponseSchema,
+    summary="Request reset password",
+    description="<h3>Request reset password with email, if the user exists and is active</h3>",
+    status_code=status.HTTP_200_OK,
+)
+def request_password_reset(
+    user_data: PasswordResetRequestSchema,
+    db: Session = Depends(get_db),
+):
+    return password_reset_request(user_data=user_data, db=db)

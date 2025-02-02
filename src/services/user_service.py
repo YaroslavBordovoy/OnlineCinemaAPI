@@ -23,7 +23,7 @@ from schemas.accounts import (
     PasswordResetRequestCompleteSchema,
     RefreshTokenRequestSchema,
     RefreshTokenResponseSchema,
-    LogoutRequestSchema,
+    LogoutRequestSchema, PasswordChangeRequestSchema,
 )
 from security.jwt_interface import JWTAuthManagerInterface
 
@@ -159,7 +159,7 @@ def logout_user(
     except BaseSecurityError:
         return MessageResponseSchema(message="Logout successful.")
 
-    existing_refresh_token = db.query(RefreshTokenModel).filter_by(user_id=user_id).delete()
+    db.query(RefreshTokenModel).filter_by(user_id=user_id).delete()
     db.commit()
 
     return MessageResponseSchema(message="Logout successful.")
@@ -184,7 +184,7 @@ def password_reset_request(user_data: PasswordResetRequestSchema, db: Session) -
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred during request reset the password.",
+            detail="An error occurred during the request to reset the password.",
         )
 
 
@@ -232,6 +232,40 @@ def password_reset_complete(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while resetting the password.",
+        )
+
+
+def change_user_password(
+    user_data: PasswordChangeRequestSchema,
+    db: Session
+) -> MessageResponseSchema | HTTPException:
+    user = db.query(UserModel).filter_by(email=user_data.email).first()
+
+    if not user or not user.is_active or not user.verify_password(raw_password=user_data.password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email or password."
+        )
+
+    if user.verify_password(raw_password=user_data.new_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot assign the same password."
+        )
+
+    try:
+        db.query(RefreshTokenModel).filter_by(user_id=user.id).delete()
+
+        user.password = user_data.new_password
+        db.commit()
+
+        return MessageResponseSchema(message="Password changed successfully")
+    except SQLAlchemyError:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while changing the password.",
         )
 
 

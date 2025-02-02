@@ -71,3 +71,12 @@ class RefreshTokenResponseSchema(BaseModel):
 
 class LogoutRequestSchema(RefreshTokenRequestSchema):
     pass
+
+
+class PasswordChangeRequestSchema(UserRegistrationRequestSchema):
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, value: str):
+        return account_validators.validate_password_strength(value)

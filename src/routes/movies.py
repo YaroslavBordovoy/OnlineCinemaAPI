@@ -1,18 +1,34 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import or_
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    status
+)
+from sqlalchemy import or_, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
-from database.models.movies import MovieModel, CertificationModel, GenreModel, StarModel, DirectorModel
+from config import get_jwt_auth_manager
+from database.models.accounts import UserModel
+from database.models.movies import (
+    MovieModel,
+    CertificationModel,
+    GenreModel,
+    StarModel,
+    DirectorModel, UserRatingModel
+)
 from database.session_sqlite import get_sqlite_db as get_db
+from exceptions import BaseSecurityError
 from schemas.movies import (
     MovieListResponseSchema,
     MovieListItemSchema,
     MovieDetailSchema,
     MovieCreateSchema,
-    MovieUpdateSchema,
+    MovieUpdateSchema
 )
-
+from security.http import get_token
+from security.jwt_interface import JWTAuthManagerInterface
 
 router = APIRouter()
 
@@ -53,34 +69,6 @@ def get_movie_list(
     This function retrieves a paginated list of movies, allowing the client to specify
     the page number and the number of items per page. It calculates the total pages
     and provides links to the previous and next pages when applicable.
-
-    :param year: Filter by release year.
-    :type year: int | None
-    :param min_imdb: Minimum IMDb rating.
-    :type min_imdb: float | None
-    :param max_imdb: Maximum IMDb rating.
-    :type max_imdb: float | None
-    :param director: Filter by director name.
-    :type director: str | None
-    :param star: Filter by actor name.
-    :type star: str | None
-    :param genre: Filter by genre name.
-    :type genre: str | None
-    :param search: Search in movie name, description, director, or star.
-    :type search: str | None
-    :param sort_by: Sort by 'price', 'year', 'votes'.
-    :type sort_by: str | None
-    :param page: The page number to retrieve (1-based index, must be >= 1).
-    :type page: int
-    :param per_page: The number of items to display per page (must be between 1 and 20).
-    :type per_page: int
-    :param db: The SQLAlchemy database session (provided via dependency injection).
-    :type db: Session
-
-    :return: A response containing the paginated list of movies and metadata.
-    :rtype: MovieListResponseSchema
-
-    :raises HTTPException: Raises a 404 error if no movies are found for the requested page.
     """
     query = db.query(MovieModel)
 
@@ -164,16 +152,6 @@ def create_movie(movie_data: MovieCreateSchema, db: Session = Depends(get_db)) -
     This endpoint allows the creation of a new movie with details such as
     name, release date, genres, stars, and directors. It automatically
     handles linking or creating related entities.
-
-    :param movie_data: The data required to create a new movie.
-    :type movie_data: MovieCreateSchema
-    :param db: The SQLAlchemy database session (provided via dependency injection).
-    :type db: Session
-
-    :return: The created movie with all details.
-    :rtype: MovieDetailSchema
-
-    :raises HTTPException: Raises a 400 error for invalid input.
     """
     existing_movie = (
         db.query(MovieModel).filter(MovieModel.name == movie_data.name, MovieModel.year == movie_data.year).first()
@@ -270,16 +248,6 @@ def get_movie_by_id(
 
     This function fetches detailed information about a movie identified by its unique ID.
     If the movie does not exist, a 404 error is returned.
-
-    :param movie_id: The unique identifier of the movie to retrieve.
-    :type movie_id: int
-    :param db: The SQLAlchemy database session (provided via dependency injection).
-    :type db: Session
-
-    :return: The details of the requested movie.
-    :rtype: MovieDetailResponseSchema
-
-    :raises HTTPException: Raises a 404 error if the movie with the given ID is not found.
     """
     movie = (
         db.query(MovieModel)
@@ -325,16 +293,6 @@ def delete_movie(
 
     This function deletes a movie identified by its unique ID.
     If the movie does not exist, a 404 error is raised.
-
-    :param movie_id: The unique identifier of the movie to delete.
-    :type movie_id: int
-    :param db: The SQLAlchemy database session (provided via dependency injection).
-    :type db: Session
-
-    :raises HTTPException: Raises a 404 error if the movie with the given ID is not found.
-
-    :return: A response indicating the successful deletion of the movie.
-    :rtype: None
     """
     movie = db.query(MovieModel).filter(MovieModel.id == movie_id).first()
 
@@ -375,18 +333,6 @@ def update_movie(
 
     This function updates a movie identified by its unique ID.
     If the movie does not exist, a 404 error is raised.
-
-    :param movie_id: The unique identifier of the movie to update.
-    :type movie_id: int
-    :param movie_data: The updated data for the movie.
-    :type movie_data: MovieUpdateSchema
-    :param db: The SQLAlchemy database session (provided via dependency injection).
-    :type db: Session
-
-    :raises HTTPException: Raises a 404 error if the movie with the given ID is not found.
-
-    :return: A response indicating the successful update of the movie.
-    :rtype: None
     """
     movie = db.query(MovieModel).filter(MovieModel.id == movie_id).first()
     if not movie:
@@ -403,3 +349,140 @@ def update_movie(
         raise HTTPException(status_code=400, detail="Invalid input data.")
     else:
         return {"detail": "Movie updated successfully."}
+
+
+@router.get(
+    "/genres/",
+    summary="Get list of genres",
+    description=(
+        "<h3>This endpoint retrieves a list of genres with the count of movies in each.</h3>"
+    ),
+    responses={
+        404: {
+            "description": "No genres found.",
+            "content": {"application/json": {"example": {"detail": "No genres found."}}},
+        }
+    },
+)
+def get_genres(db: Session = Depends(get_db)):
+    genres_with_movie_count = db.query(GenreModel, func.count(MovieModel.id).label("movie_count")) \
+        .join(MovieModel.genres).group_by(GenreModel.id).all()
+
+    result = [
+        {
+            "name": genre.name,
+            "movie_count": movie_count
+        }
+        for genre, movie_count in genres_with_movie_count
+    ]
+
+    return result
+
+
+@router.get(
+    "/genres/{genre_name}/",
+    summary="Get genre details by genre name.",
+    description=(
+        "<h3>This endpoint retrieves a genre with all related movies.</h3>"
+    ),
+    responses={
+        404: {
+            "description": "No genres found.",
+            "content": {"application/json": {"example": {"detail": "No genres found."}}},
+        }
+    },
+)
+def get_movies_by_genre(genre_name: str, db: Session = Depends(get_db)):
+    genre = db.query(GenreModel).filter(GenreModel.name.ilike(genre_name)).first()
+    if not genre:
+        raise HTTPException(status_code=404, detail="Genre not found")
+    return genre.movies
+
+
+@router.put(
+    "/movies/{movie_id}/rate",
+    summary="Rate a movie by its ID",
+    description=(
+        "<h3>Rate movies on a 10-point scale.</h3>"
+    ),
+    responses={
+        400: {
+            "description": "Bad Request - The provided refresh token is invalid or expired.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Token has expired."
+                    }
+                }
+            },
+        },
+        401: {
+            "description": "Unauthorized - Refresh token not found.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Refresh token not found."
+                    }
+                }
+            },
+        },
+        404: {
+            "description": "Not Found - The movie does not exist.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Movie not found."
+                    }
+                }
+            },
+        },
+    },
+)
+def rate_movie(
+        movie_id: int,
+        rating: int = Query(ge=0, le=10),
+        db: Session = Depends(get_db),
+        token: str = Depends(get_token),
+        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
+):
+    try:
+        payload = jwt_manager.decode_access_token(token)
+        token_user_id = payload.get("user_id")
+    except BaseSecurityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e)
+        )
+
+    user = db.query(UserModel).filter_by(id=token_user_id).first()
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found or not active."
+        )
+
+    movie = db.query(MovieModel).filter(MovieModel.id == movie_id).first()
+    if not movie:
+        raise HTTPException(status_code=404, detail="Movie not found")
+
+    user_rating = db.query(UserRatingModel).filter_by(user_id=user.id, movie_id=movie.id).first()
+
+    if user_rating:
+        previous_rating = user_rating.rating
+        user_rating.rating = rating
+    else:
+        previous_rating = None
+        user_rating = UserRatingModel(user_id=user.id, movie_id=movie.id, rating=rating)
+        db.add(user_rating)
+        movie.votes += 1
+
+    if previous_rating is not None:
+        total_rating = (movie.rating * movie.votes) - previous_rating + rating
+    else:
+        total_rating = (movie.rating * (movie.votes - 1)) + rating
+
+    movie.rating = round(total_rating / movie.votes, 1)
+
+    db.commit()
+
+    return MovieDetailSchema.model_validate(movie)

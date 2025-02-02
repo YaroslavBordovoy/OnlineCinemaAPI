@@ -1,9 +1,15 @@
 import random
 
 from sqlalchemy.orm import Session
+
+from database.models.accounts import UserGroupModel, UserGroupEnum
 from database.models.movies import MovieModel, GenreModel, DirectorModel, CertificationModel, StarModel
 
 def load_fixtures(db: Session):
+    user_group = UserGroupModel(id=1, name=UserGroupEnum.USER)
+    admin_group = UserGroupModel(id=2, name=UserGroupEnum.ADMIN)
+    db.add_all([user_group, admin_group])
+    db.commit()
 
     certifications = [
         CertificationModel(name="G"),
@@ -50,7 +56,8 @@ def load_fixtures(db: Session):
             year=2000 + i,
             time=random.randint(90, 180),
             imdb=round(random.uniform(6.0, 9.5), 1),
-            votes=random.randint(50, 100),
+            votes=random.randint(10, 100),
+            rating=round(random.uniform(6.0, 9.5), 1),
             meta_score=random.randint(50, 100),
             gross=round(random.uniform(10.0, 500.0), 2),
             description=f"Description for Movie {i}",

@@ -38,6 +38,7 @@ class MovieBaseSchema(BaseModel):
     time: int
     imdb: float
     votes: int
+    rating: float
     meta_score: float | None = None
     gross: float | None = None
     description: str

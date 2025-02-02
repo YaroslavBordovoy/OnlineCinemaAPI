@@ -1,10 +1,12 @@
+from datetime import datetime
 from decimal import Decimal
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from config.dependencies import get_jwt_auth_manager
-from database.models.accounts import UserModel
+from database.models.accounts import UserModel, UserGroupModel, UserGroupEnum
 from database.models.cart import CartModel, CartItemModel
 from database.models.movies import MovieModel
 from database.models.orders import OrderModel, OrderStatusEnum, OrderItemModel
@@ -108,5 +110,58 @@ def get_orders(
         )
 
     orders = db.query(OrderModel).filter(OrderModel.user_id == user.id).all()
+
+    return orders
+
+@router.get(
+    "/order/all",
+    response_model=OrderListResponseSchema
+)
+def get_all_orders(
+        token: str = Depends(get_token),
+        jwt_manager=Depends(get_jwt_auth_manager),
+        db: Session = Depends(get_db),
+        user_id: Optional[int] = None,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        status_filter: Optional[OrderStatusEnum] = None,
+):
+    try:
+        payload = jwt_manager.decode_access_token(token)
+        token_user_id = payload.get("user_id")
+    except (TokenExpiredError, InvalidTokenError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e)
+        )
+
+    user = db.query(UserModel).join(UserGroupModel).filter_by(id=token_user_id).first()
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found or not active."
+        )
+
+    if user.group != UserGroupEnum.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to access this resource."
+        )
+
+    query = db.query(OrderModel)
+
+    if user_id:
+        query = query.filter(OrderModel.user_id == user_id)
+
+    if start_date:
+        query = query.filter(OrderModel.created_at >= start_date)
+
+    if end_date:
+        query = query.filter(OrderModel.created_at <= end_date)
+
+    if status_filter:
+        query = query.filter(OrderModel.status == status_filter)
+
+    orders = query.join(OrderItemModel).all()
 
     return orders

@@ -17,7 +17,7 @@ class OrderItemResponseSchema(OrderItemSchema):
 class OrderBaseSchema(BaseModel):
     user_id: int
     status: OrderStatusEnum = OrderStatusEnum.PENDING
-    items: list[OrderItemResponseSchema]
+    items: list[OrderItemSchema]
 
 
 class OrderCreateSchema(OrderBaseSchema):

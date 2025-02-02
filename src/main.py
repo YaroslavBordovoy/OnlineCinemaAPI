@@ -1,7 +1,7 @@
 import uvicorn
 from fastapi import FastAPI
 
-from routes import movie_router
+from routes import movie_router,order_router
 
 
 app = FastAPI(
@@ -13,6 +13,7 @@ app = FastAPI(
 api_version_prefix = "/api/v1"
 
 app.include_router(movie_router, prefix=f"{api_version_prefix}/cinema", tags=["cinema"])
+app.include_router(order_router, prefix=f"{api_version_prefix}/orders", tags=["orders"])
 
 
 if __name__ == "__main__":

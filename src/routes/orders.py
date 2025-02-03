@@ -305,7 +305,7 @@ def order_to_cart(
             detail="You do not have permission to access this resource."
         )
 
-    cart = db.query(CartModel).filter(CartModel.user_id == user.id).first()
+    cart = db.query(CartModel).join(CartItemModel).filter(CartModel.user_id == user.id).first()
 
     if not cart:
         raise HTTPException(
@@ -313,12 +313,25 @@ def order_to_cart(
             detail="Cart not found."
         )
 
+    total_amount = Decimal("0")
+
+    purchased_movies = [item.movie_id for item in cart.cart_items]
     for order_item in order.order_items:
-        cart_item = CartItemModel(
-            cart_id=cart.id,
-            movie_id=order_item.movie_id,
-        )
-        db.add(cart_item)
+        movie = db.query(MovieModel).filter(MovieModel.id == order_item.movie_id).first()
+
+        if not movie or order_item.movie_id in purchased_movies:
+            db.delete(order_item)
+            # ToDo send email about not valid movie
+
+        else:
+            cart_item = CartItemModel(
+                cart_id=cart.id,
+                movie_id=order_item.movie_id,
+            )
+            db.add(cart_item)
+            total_amount += order_item.price
+
+    order.total_amount = total_amount
 
     db.commit()
 

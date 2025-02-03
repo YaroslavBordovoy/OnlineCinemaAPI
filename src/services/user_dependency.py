@@ -13,9 +13,9 @@ security = HTTPBearer()
 
 
 def get_current_user(
-        credentials: HTTPAuthorizationCredentials = Depends(security),
-        jwt_auth_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
-        db: Session = Depends(get_db),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    jwt_auth_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+    db: Session = Depends(get_db),
 ):
     token = credentials.credentials
     try:

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from database.models.accounts import UserGroupModel, UserGroupEnum
 from database.models.movies import MovieModel, GenreModel, DirectorModel, CertificationModel, StarModel
 
+
 def load_fixtures(db: Session):
     user_groups = [
         UserGroupModel(name=UserGroupEnum.USER),

@@ -1,6 +1,39 @@
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel, field_validator, Field
+
+
+class CommentCreateSchema(BaseModel):
+    comment: str
+
+    model_config = {"from_attributes": True}
+
+
+class CommentSchema(BaseModel):
+    id: int
+    user_id: int
+    comment: str
+    parent_id: int | None = None
+    replies: list[int] | None = None
+
+    model_config = {"from_attributes": True}
+
+    @field_validator("replies", mode="before")
+    @classmethod
+    def extract_reply_ids(cls, value):
+        if isinstance(value, list):
+            return [reply.id for reply in value]
+        return None
+
+
+class CommentResponseSchema(BaseModel):
+    id: int
+    comment: str
+    parent_id: int | None = None
+    user_id: int
+
+    model_config = {"from_attributes": True}
 
 
 class GenreSchema(BaseModel):
@@ -43,6 +76,8 @@ class MovieBaseSchema(BaseModel):
     gross: float | None = None
     description: str
     price: float
+    likes: int
+    dislikes: int
 
     model_config = {"from_attributes": True}
 
@@ -61,6 +96,7 @@ class MovieDetailSchema(MovieBaseSchema):
     stars: list[StarSchema]
     directors: list[DirectorSchema]
     certification: CertificationSchema
+    comments: list[CommentSchema]
 
     model_config = {"from_attributes": True}
 
@@ -121,5 +157,12 @@ class MovieUpdateSchema(BaseModel):
     gross: float | None = None
     description: str | None = None
     price: float | None = Field(None, ge=0)
+
+    model_config = {"from_attributes": True}
+
+
+class FavoriteSchema(BaseModel):
+    id: int
+    favorite: bool
 
     model_config = {"from_attributes": True}

@@ -18,9 +18,9 @@ stripe.api_key = os.environ["STRIPE_SECRET_KEY"]
 
 router = APIRouter()
 
+
 @router.post("/create-payment/")
-async def create_payment(payment: PaymentCreate,
-                         db: Session = Depends(get_db)):
+async def create_payment(payment: PaymentCreate, db: Session = Depends(get_db)):
     order = db.query(OrderModel).filter(OrderModel.id == payment.order_id).first()
     if not order:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
@@ -29,15 +29,12 @@ async def create_payment(payment: PaymentCreate,
 
     if amount != order.total_amount:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Order total does not match calculated amount."
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Order total does not match calculated amount."
         )
 
     try:
         intent = stripe.PaymentIntent.create(
-            amount=int(amount * 100),
-            currency="usd",
-            metadata={"order_id": payment.order.id}
+            amount=int(amount * 100), currency="usd", metadata={"order_id": payment.order.id}
         )
 
         new = PaymentModel(
@@ -55,16 +52,14 @@ async def create_payment(payment: PaymentCreate,
     except stripe.error.StripeError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
+
 @router.get("/stripe-webhook/")
-async def stripe_webhook(request: Request,
-                         db: Session = Depends(get_db)):
+async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     payload = await request.body()
     sig_header = request.headers.get("Stripe-Signature")
 
     try:
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, os.environ["STRIPE_ENDPOINT_SECRET"]
-        )
+        event = stripe.Webhook.construct_event(payload, sig_header, os.environ["STRIPE_ENDPOINT_SECRET"])
     except (ValueError, stripe.error.SignatureVerificationError):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid signature")
 
@@ -86,27 +81,25 @@ async def stripe_webhook(request: Request,
     elif event["type"] == "payment_intent.payment_failed":
         intent = event["data"]["object"]
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Payment failed. Please try a different payment method."
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Payment failed. Please try a different payment method."
         )
 
     return {"status": "success"}
 
 
 @router.get("/")
-async def get_payments(user_id: int,
-                       db: Session = Depends(get_db)):
+async def get_payments(user_id: int, db: Session = Depends(get_db)):
     payments = db.query(PaymentModel).filter(PaymentModel.user_id == user_id).all()
     return payments
 
 
 @router.get("/mod/payments/")
 async def get_moderator_payments(
-        user_id: int = None,
-        start_date: datetime.datetime = None,
-        end_date: datetime.datetime = None,
-        status: PaymentStatus = None,
-        db: Session = Depends(get_db)
+    user_id: int = None,
+    start_date: datetime.datetime = None,
+    end_date: datetime.datetime = None,
+    status: PaymentStatus = None,
+    db: Session = Depends(get_db),
 ):
     filt = db.query(PaymentModel)
     if user_id:

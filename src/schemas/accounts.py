@@ -33,6 +33,10 @@ class UserActivationTokenRequestSchema(UserBaseSchema):
     token: str
 
 
+class UserReActivationTokenRequestSchema(UserBaseSchema):
+    pass
+
+
 class LoginRequestSchema(UserRegistrationRequestSchema):
     pass
 

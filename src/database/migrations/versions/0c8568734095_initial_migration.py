@@ -1,8 +1,8 @@
 """Initial migration
 
-Revision ID: 60865ab727e5
+Revision ID: 0c8568734095
 Revises: 
-Create Date: 2025-02-03 20:24:32.508126
+Create Date: 2025-02-03 22:59:49.176663
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '60865ab727e5'
+revision: str = '0c8568734095'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -139,15 +139,6 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['star_id'], ['stars.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('movie_id', 'star_id')
     )
-    op.create_table('orders',
-    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('user_id', sa.Integer(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('status', sa.Enum('PENDING', 'PAID', 'CANCELED', name='orderstatusenum'), nullable=False),
-    sa.Column('total_amount', sa.Numeric(precision=10, scale=2), nullable=True),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
     op.create_table('password_reset_tokens',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
@@ -207,6 +198,17 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('cart_id', 'movie_id', name='unique_cart_movie')
     )
+    op.create_table('orders',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('status', sa.Enum('PENDING', 'PAID', 'CANCELED', name='orderstatusenum'), nullable=False),
+    sa.Column('total_amount', sa.Numeric(precision=10, scale=2), nullable=True),
+    sa.Column('cart_id', sa.Integer(), nullable=True),
+    sa.ForeignKeyConstraint(['cart_id'], ['carts.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('order_items',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('order_id', sa.Integer(), nullable=False),
@@ -245,13 +247,13 @@ def downgrade() -> None:
     op.drop_table('payment_items')
     op.drop_table('payments')
     op.drop_table('order_items')
+    op.drop_table('orders')
     op.drop_table('cart_items')
     op.drop_table('user_ratings')
     op.drop_table('user_profiles')
     op.drop_table('refresh_tokens')
     op.drop_table('reactions')
     op.drop_table('password_reset_tokens')
-    op.drop_table('orders')
     op.drop_table('movies_stars')
     op.drop_table('movies_genres')
     op.drop_table('movies_directors')

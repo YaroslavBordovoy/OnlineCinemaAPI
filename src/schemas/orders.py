@@ -20,17 +20,13 @@ class OrderItemResponseSchema(OrderItemSchema):
     model_config = {"from_attributes": True}
 
 
-class OrderBaseSchema(BaseModel):
-    user_id: int
-
-
-class OrderCreateSchema(OrderBaseSchema):
+class OrderCreateSchema(BaseModel):
     items: list[OrderItemCreateSchema]
-    pass
 
 
-class OrderResponseSchema(OrderBaseSchema):
+class OrderResponseSchema(BaseModel):
     id: int
+    user_id: int
     created_at: datetime
     status: OrderStatusEnum
     order_items: list[OrderItemResponseSchema]

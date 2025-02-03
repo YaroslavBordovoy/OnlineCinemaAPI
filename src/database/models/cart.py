@@ -13,12 +13,12 @@ class CartModel(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     user: Mapped["UserModel"] = relationship("UserModel")
-    cart_items: Mapped[list["CartItemModel"]] = relationship(
-        "CartItemModel", back_populates="cart", cascade="all, delete-orphan"
+    cart_items: Mapped[list["OrderModel"]] = relationship(
+        "OrderModel", back_populates="cart", cascade="all, delete-orphan"
     )
 
     def __repr__(self) -> str:
-        return f"<User: {self.user}>"
+        return f"<id: {self.id}, user_id: {self.user_id}, cart_items: {self.cart_items}>"
 
 
 class CartItemModel(Base):

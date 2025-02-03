@@ -2,19 +2,21 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 
-from config.dependencies import get_jwt_auth_manager
+from config.dependencies import get_jwt_auth_manager, get_mail_service
 from database.models.accounts import UserModel, UserGroupModel, UserGroupEnum
 from database.models.cart import CartModel
 from database.models.movies import MovieModel
 from database.models.orders import OrderModel, OrderStatusEnum, OrderItemModel
 from database.session_sqlite import get_sqlite_db as get_db
+from mail_service.mail_service import SMTPService
 from schemas.orders import OrderResponseSchema, OrderListResponseSchema, OrderCreateSchema, OrderItemResponseSchema
 from security.http import get_token
 from security.jwt_interface import JWTAuthManagerInterface
 from exceptions import BaseSecurityError
+from services import email_notifications
 
 router = APIRouter()
 
@@ -22,8 +24,10 @@ router = APIRouter()
 @router.post("/", response_model=OrderResponseSchema)
 def create_order(
     order_data: OrderCreateSchema,
+    background_tasks: BackgroundTasks,
     token: str = Depends(get_token),
     jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+    email_sender: SMTPService = Depends(get_mail_service),
     db: Session = Depends(get_db),
 ):
     try:
@@ -53,12 +57,19 @@ def create_order(
         movie = db.query(MovieModel).filter(MovieModel.id == order_item.movie_id).first()
 
         if not movie:
-            pass
-            # ToDO send email movie unavailable
+            email_notifications.movie_unavailable_notification(
+                user=user,
+                bg=background_tasks,
+                email_sender=email_sender,
+            )
+
 
         if movie.id in movies_ids:
-            pass
-            # ToDo send email can't buy same movie more than one time
+            email_notifications.movie_already_in_orders_notification(
+                user=user,
+                bg=background_tasks,
+                email_sender=email_sender,
+            )
 
         else:
             item = OrderItemModel(movie_id=order_item.movie_id, price_at_order=Decimal(movie.price))

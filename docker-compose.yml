@@ -40,6 +40,55 @@ services:
     networks:
       - cinema_network
 
+  redis:
+    image: "redis:latest"
+    container_name: redis_cinema
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - cinema_network
+
+  celery_worker:
+    build: .
+    container_name: celery_worker_cinema
+    command: [ "celery", "-A", "celery_config.celery_app", "worker", "--loglevel=info" ]
+    depends_on:
+      redis:
+        condition: service_started
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/usr/src/fastapi
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - ./src:/usr/src/fastapi
+    networks:
+      - cinema_network
+
+  celery_beat:
+    build: .
+    container_name: celery_beat_cinema
+    command: [ "celery", "-A", "celery_config.celery_app", "beat", "--loglevel=info" ]
+    depends_on:
+      redis:
+        condition: service_started
+      celery_worker:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/usr/src/fastapi
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    volumes:
+      - ./src:/usr/src/fastapi
+    networks:
+      - cinema_network
+
   migrator:
     build: .
     container_name: alembic_migrator_cinema

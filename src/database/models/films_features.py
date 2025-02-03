@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Optional
 
 from sqlalchemy import Enum as SQLAlchemyEnum
 from sqlalchemy import Boolean, Integer, ForeignKey, Text
@@ -35,6 +36,9 @@ class CommentModel(Base):
 
     comment: Mapped[str] = mapped_column(Text, nullable=True)
 
+    parent_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("comments.id"), nullable=True)
+    parent: Mapped[Optional["CommentModel"]] = relationship("CommentModel", remote_side=[id], backref="replies")
+
     movie_id: Mapped[int] = mapped_column(Integer, ForeignKey("movies.id"), nullable=False)
     movie: Mapped["MovieModel"] = relationship("MovieModel", back_populates="comments")
 
@@ -47,7 +51,7 @@ class FavoriteModel(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
-    favorite: Mapped[bool] = mapped_column(Boolean, nullable=True)
+    favorite: Mapped[bool] = mapped_column(Boolean, default=False)
 
     movie_id: Mapped[int] = mapped_column(Integer, ForeignKey("movies.id"), nullable=False)
     movie: Mapped["MovieModel"] = relationship("MovieModel", back_populates="favorites")

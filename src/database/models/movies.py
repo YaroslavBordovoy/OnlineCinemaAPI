@@ -143,9 +143,11 @@ class MovieModel(Base):
     gross: Mapped[float] = mapped_column(Float, nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     price: Mapped[float] = mapped_column(DECIMAL(10, 2), nullable=False)
+    likes: Mapped[int] = mapped_column(Integer, default=0)
+    dislikes: Mapped[int] = mapped_column(Integer, default=0)
 
     reactions: Mapped[list["ReactionModel"]] = relationship("ReactionModel", backref="movie_reactions", uselist=False)
-    comments: Mapped[list["CommentModel"]] = relationship("CommentModel", backref="movie_comments", uselist=False)
+    comments: Mapped[list["CommentModel"]] = relationship("CommentModel", backref="movie_comments")
     favorites: Mapped[list["FavoriteModel"]] = relationship("FavoriteModel", backref="movie_favorites", uselist=False)
 
     certification_id: Mapped[int] = mapped_column(

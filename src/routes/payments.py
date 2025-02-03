@@ -1,3 +1,4 @@
+import datetime
 import os
 
 import stripe
@@ -79,3 +80,21 @@ async def get_payments(user_id: int,
                        db: Session = Depends(get_db)):
     payments = db.query(PaymentModel).filter(PaymentModel.user_id == user_id).all()
     return payments
+
+
+@router.get("/mod/payments/")
+async def get_moderator_payments(
+        user_id: int = None,
+        start_date: datetime = None,
+        end_date: datetime = None,
+        status: PaymentStatus = None,
+        db: Session = Depends(get_db)
+):
+    filt = db.query(PaymentModel)
+    if user_id:
+        filt = filt.filter(PaymentModel.user_id == user_id)
+    if start_date and end_date:
+        filt = filt.filter(PaymentModel.created_at.between(start_date, end_date))
+    if status:
+        filt = filt.filter(PaymentModel.status == status)
+    return filt.all()

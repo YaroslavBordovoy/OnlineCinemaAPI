@@ -143,6 +143,7 @@ class MovieModel(Base):
     gross: Mapped[float] = mapped_column(Float, nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     price: Mapped[float] = mapped_column(DECIMAL(10, 2), nullable=False)
+    rating: Mapped[float] = mapped_column(Float, nullable=True)
     likes: Mapped[int] = mapped_column(Integer, default=0)
     dislikes: Mapped[int] = mapped_column(Integer, default=0)
 
@@ -184,3 +185,15 @@ class MovieModel(Base):
             f"IMDB_score={self.imdb}"
             f")>"
         )
+
+
+class UserRatingModel(Base):
+    __tablename__ = "user_ratings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    movie_id: Mapped[int] = mapped_column(Integer, ForeignKey("movies.id", ondelete="CASCADE"), nullable=False)
+    rating: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    user = relationship("UserModel", backref="ratings")
+    movie = relationship("MovieModel", backref="user_ratings")

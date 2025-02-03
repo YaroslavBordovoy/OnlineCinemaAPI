@@ -23,6 +23,7 @@ from schemas.accounts import (
     PasswordResetRequestCompleteSchema,
     RefreshTokenRequestSchema,
     RefreshTokenResponseSchema,
+    PasswordChangeRequestSchema,
 )
 from security.jwt_interface import JWTAuthManagerInterface
 
@@ -68,7 +69,10 @@ def create_user(user_data: UserRegistrationRequestSchema, db: Session) -> UserMo
         )
 
 
-def activate_user(user_data: UserActivationTokenRequestSchema, db: Session) -> MessageResponseSchema | HTTPException:
+def activate_user(
+        user_data: UserActivationTokenRequestSchema,
+        db: Session
+) -> MessageResponseSchema | HTTPException:
     user = db.query(UserModel).filter_by(email=user_data.email).first()
 
     if not user:
@@ -108,9 +112,9 @@ def activate_user(user_data: UserActivationTokenRequestSchema, db: Session) -> M
 
 
 def login_user(
-        user_data: LoginRequestSchema,
-        db: Session,
-        jwt_auth_manager: JWTAuthManagerInterface,
+    user_data: LoginRequestSchema,
+    db: Session,
+    jwt_auth_manager: JWTAuthManagerInterface,
 ) -> LoginResponseSchema:
     user = db.query(UserModel).filter_by(email=user_data.email).first()
 
@@ -147,15 +151,34 @@ def login_user(
         )
 
 
+def logout_user(
+    db: Session,
+    user: UserModel
+) -> MessageResponseSchema:
+    try:
+        db.query(RefreshTokenModel).filter_by(user_id=user.id).delete()
+        db.commit()
+
+        return MessageResponseSchema(message="Logout successful.")
+    except SQLAlchemyError:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred during logout.",
+        )
+
+
+
 def password_reset_request(user_data: PasswordResetRequestSchema, db: Session) -> MessageResponseSchema:
     user = db.query(UserModel).filter_by(email=user_data.email).first()
 
     if not user or not user.is_active:
         return MessageResponseSchema(message="If you are registered, you will receive an email with instructions.")
 
-    db.query(PasswordResetTokenModel).filter_by(user_id=user.id).delete()
-
     try:
+        db.query(PasswordResetTokenModel).filter_by(user_id=user.id).delete()
+
         new_reset_token = PasswordResetTokenModel(user_id=user.id)
         db.add(new_reset_token)
         db.commit()
@@ -166,13 +189,13 @@ def password_reset_request(user_data: PasswordResetRequestSchema, db: Session) -
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred during request reset the password.",
+            detail="An error occurred during the request to reset the password.",
         )
 
 
 def password_reset_complete(
-        user_data: PasswordResetRequestCompleteSchema,
-        db: Session,
+    user_data: PasswordResetRequestCompleteSchema,
+    db: Session,
 ) -> MessageResponseSchema | HTTPException:
     user = db.query(UserModel).filter_by(email=user_data.email).first()
 
@@ -217,6 +240,40 @@ def password_reset_complete(
         )
 
 
+def change_user_password(
+    user_data: PasswordChangeRequestSchema,
+    db: Session,
+    user: UserModel,
+) -> MessageResponseSchema | HTTPException:
+
+    if not user.verify_password(raw_password=user_data.password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email or password."
+        )
+
+    if user.verify_password(raw_password=user_data.new_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot assign the same password."
+        )
+
+    try:
+        user.password = user_data.new_password
+        db.query(RefreshTokenModel).filter_by(user_id=user.id).delete()
+
+        db.commit()
+
+        return MessageResponseSchema(message="Password changed successfully")
+    except SQLAlchemyError:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while changing the password.",
+        )
+
+
 def refresh_token(
     user_data: RefreshTokenRequestSchema,
     db: Session,
@@ -248,5 +305,7 @@ def refresh_token(
         )
 
     new_access_token = jwt_auth_manager.create_access_token({"user_id": user_id})
+    db.delete(refresh_token_exist)
+    db.commit()
 
     return RefreshTokenResponseSchema(access_token=new_access_token)

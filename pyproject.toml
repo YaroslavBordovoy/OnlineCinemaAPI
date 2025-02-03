@@ -7,7 +7,7 @@ package-mode = false
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.12"
+python = ">=3.12,<4.0"
 fastapi = ">=0.115.7,<0.116.0"
 uvicorn = ">=0.34.0,<0.35.0"
 sqlalchemy = ">=2.0.37,<3.0.0"
@@ -33,6 +33,7 @@ psycopg2-binary = "^2.9.10"
 gunicorn = "^23.0.0"
 celery = {extras = ["redis"], version = "^5.4.0"}
 redis = "^5.2.1"
+django-celery-beat = {git = "https://github.com/celery/django-celery-beat.git"}
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

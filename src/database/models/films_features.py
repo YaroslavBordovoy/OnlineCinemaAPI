@@ -18,9 +18,7 @@ class ReactionModel(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
-    reaction: Mapped[ReactionEnum] = mapped_column(
-        SQLAlchemyEnum(ReactionEnum), nullable=True
-    )
+    reaction: Mapped[ReactionEnum] = mapped_column(SQLAlchemyEnum(ReactionEnum), nullable=True)
 
     movie_id: Mapped[int] = mapped_column(Integer, ForeignKey("movies.id"), nullable=False)
     movie: Mapped["MovieModel"] = relationship("MovieModel", back_populates="reactions")

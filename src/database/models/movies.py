@@ -151,12 +151,8 @@ class MovieModel(Base):
     comments: Mapped[list["CommentModel"]] = relationship("CommentModel", backref="movie_comments")
     favorites: Mapped[list["FavoriteModel"]] = relationship("FavoriteModel", backref="movie_favorites", uselist=False)
 
-    certification_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("certifications.id"), nullable=False
-    )
-    certification: Mapped["CertificationModel"] = relationship(
-        "CertificationModel", back_populates="movies"
-    )
+    certification_id: Mapped[int] = mapped_column(Integer, ForeignKey("certifications.id"), nullable=False)
+    certification: Mapped["CertificationModel"] = relationship("CertificationModel", back_populates="movies")
 
     genres: Mapped[list["GenreModel"]] = relationship(
         "GenreModel", secondary=MoviesGenresModel, back_populates="movies"

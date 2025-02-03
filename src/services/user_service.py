@@ -33,17 +33,13 @@ def create_user(user_data: UserRegistrationRequestSchema, db: Session) -> UserMo
 
     if user:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"A user with this email {user_data.email} already exists."
+            status_code=status.HTTP_409_CONFLICT, detail=f"A user with this email {user_data.email} already exists."
         )
 
     user_group = db.query(UserGroupModel).filter_by(name=UserGroupEnum.USER).first()
 
     if not user_group:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="User group not found."
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="User group not found.")
 
     try:
         new_user = UserModel.create(
@@ -69,10 +65,7 @@ def create_user(user_data: UserRegistrationRequestSchema, db: Session) -> UserMo
         )
 
 
-def activate_user(
-        user_data: UserActivationTokenRequestSchema,
-        db: Session
-) -> MessageResponseSchema | HTTPException:
+def activate_user(user_data: UserActivationTokenRequestSchema, db: Session) -> MessageResponseSchema | HTTPException:
     user = db.query(UserModel).filter_by(email=user_data.email).first()
 
     if not user:
@@ -89,12 +82,8 @@ def activate_user(
 
     activation_token = db.query(ActivationTokenModel).filter_by(token=user_data.token).first()
 
-    if (not activation_token or
-            activation_token.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc)):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired activation token."
-        )
+    if not activation_token or activation_token.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired activation token.")
 
     try:
         user.is_active = True
@@ -119,16 +108,10 @@ def login_user(
     user = db.query(UserModel).filter_by(email=user_data.email).first()
 
     if not user or not user.verify_password(raw_password=user_data.password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password."
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password.")
 
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is not activated."
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User account is not activated.")
 
     try:
         access_token = jwt_auth_manager.create_access_token({"user_id": user.id})
@@ -151,10 +134,7 @@ def login_user(
         )
 
 
-def logout_user(
-    db: Session,
-    user: UserModel
-) -> MessageResponseSchema:
+def logout_user(db: Session, user: UserModel) -> MessageResponseSchema:
     try:
         db.query(RefreshTokenModel).filter_by(user_id=user.id).delete()
         db.commit()
@@ -167,7 +147,6 @@ def logout_user(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred during logout.",
         )
-
 
 
 def password_reset_request(user_data: PasswordResetRequestSchema, db: Session) -> MessageResponseSchema:
@@ -200,16 +179,10 @@ def password_reset_complete(
     user = db.query(UserModel).filter_by(email=user_data.email).first()
 
     if not user or not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid email or token."
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email or token.")
 
     if user.verify_password(raw_password=user_data.password):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="You cannot assign the same password."
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You cannot assign the same password.")
 
     reset_token = db.query(PasswordResetTokenModel).filter_by(user_id=user.id).first()
 
@@ -220,10 +193,7 @@ def password_reset_complete(
             db.delete(reset_token)
             db.commit()
 
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid email or token."
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email or token.")
 
     try:
         user.password = user_data.password
@@ -245,18 +215,11 @@ def change_user_password(
     db: Session,
     user: UserModel,
 ) -> MessageResponseSchema | HTTPException:
-
     if not user.verify_password(raw_password=user_data.password):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid email or password."
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email or password.")
 
     if user.verify_password(raw_password=user_data.new_password):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="You cannot assign the same password."
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You cannot assign the same password.")
 
     try:
         user.password = user_data.new_password

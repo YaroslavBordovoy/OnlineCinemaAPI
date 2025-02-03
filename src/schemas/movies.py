@@ -26,6 +26,7 @@ class CommentSchema(BaseModel):
             return [reply.id for reply in value]
         return None
 
+
 class CommentResponseSchema(BaseModel):
     id: int
     comment: str
@@ -165,7 +166,3 @@ class FavoriteSchema(BaseModel):
     favorite: bool
 
     model_config = {"from_attributes": True}
-
-
-
-

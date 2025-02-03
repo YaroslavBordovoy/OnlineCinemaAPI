@@ -1,16 +1,20 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import or_, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from database.models import ReactionModel, FavoriteModel, CommentModel
 from database.models.films_features import ReactionEnum
-from config import get_jwt_auth_manager
-from database.models.accounts import UserModel
-from database.models.movies import MovieModel, CertificationModel, GenreModel, StarModel, DirectorModel, UserRatingModel
+from database.models.accounts import UserModel, UserGroupEnum
+from database.models.movies import (
+    MovieModel,
+    CertificationModel,
+    GenreModel,
+    StarModel,
+    DirectorModel,
+    UserRatingModel
+)
 from database.session_sqlite import get_sqlite_db as get_db
-from exceptions import TokenExpiredError
-from exceptions import BaseSecurityError
 from schemas.movies import (
     MovieListResponseSchema,
     MovieListItemSchema,
@@ -58,6 +62,7 @@ def get_movie_list(
     search: str | None = Query(None, description="Search in movie name, description, director, or star"),
     sort_by: str | None = Query(None, description="Sort by 'price', 'year', 'votes'"),
     db: Session = Depends(get_db),
+    user: UserModel = Depends(get_current_user)
 ) -> MovieListResponseSchema:
     """
     Fetch a paginated list of movies from the database.
@@ -125,7 +130,7 @@ def get_movie_list(
     "/movies/favorites/",
     response_model=MovieListResponseSchema,
     summary="Get a paginated list of films in favorites",
-    description=("<h3>This endpoint allows clients to get list of favorite movies</h3>"),
+    description="<h3>This endpoint allows clients to get list of favorite movies</h3>",
     responses={
         404: {
             "description": "No movies found.",
@@ -148,9 +153,8 @@ def favorite_movies(
     genre: str | None = Query(None, description="Filter by genre name"),
     search: str | None = Query(None, description="Search in movie name, description, director, or star"),
     sort_by: str | None = Query(None, description="Sort by 'price', 'year', 'votes'"),
-    jwt_manager: JWTAuthManager = Depends(get_jwt_auth_manager),
-    token: str = Depends(get_token),
     db: Session = Depends(get_db),
+    user: UserModel = Depends(get_current_user)
 ) -> MovieListResponseSchema:
     """
     Fetch a paginated list of favorite movies from the database.
@@ -158,47 +162,11 @@ def favorite_movies(
     This function retrieves a paginated list of favorite movies, allowing the client to specify
     the page number and the number of items per page. It calculates the total pages
     and provides links to the previous and next pages when applicable.
-
-    :param year: Filter by release year.
-    :type year: int | None
-    :param min_imdb: Minimum IMDb rating.
-    :type min_imdb: float | None
-    :param max_imdb: Maximum IMDb rating.
-    :type max_imdb: float | None
-    :param director: Filter by director name.
-    :type director: str | None
-    :param star: Filter by actor name.
-    :type star: str | None
-    :param genre: Filter by genre name.
-    :type genre: str | None
-    :param search: Search in movie name, description, director, or star.
-    :type search: str | None
-    :param sort_by: Sort by 'price', 'year', 'votes'.
-    :type sort_by: str | None
-    :param page: The page number to retrieve (1-based index, must be >= 1).
-    :type page: int
-    :param per_page: The number of items to display per page (must be between 1 and 20).
-    :type per_page: int
-    :param db: The SQLAlchemy database session (provided via dependency injection).
-    :type db: Session
-
-    :return: A response containing the paginated list of movies and metadata.
-    :rtype: MovieListResponseSchema
-
-    :raises HTTPException: Raises a 404 error if no movies are found for the requested page.
     """
-
-    try:
-        access_token = jwt_manager.decode_access_token(token)
-    except TokenExpiredError:
-        raise HTTPException(status_code=401, detail="Token has expired.")
-
-    user_id = access_token.get("user_id")
-
     query = (
         db.query(MovieModel)
         .join(FavoriteModel, FavoriteModel.movie_id == MovieModel.id)
-        .filter(FavoriteModel.favorite == True, FavoriteModel.user_id == user_id)
+        .filter(FavoriteModel.favorite == True, FavoriteModel.user_id == user.id)
     )
 
     if year:
@@ -227,12 +195,6 @@ def favorite_movies(
                 )
             )
         )
-
-    query = (
-        db.query(MovieModel)
-        .join(FavoriteModel, FavoriteModel.movie_id == MovieModel.id)
-        .filter(FavoriteModel.favorite == True, FavoriteModel.user_id == user_id)
-    ).order_by()
 
     sort_fields = {
         "price": MovieModel.price,
@@ -281,7 +243,11 @@ def favorite_movies(
     },
     status_code=201,
 )
-def create_movie(movie_data: MovieCreateSchema, db: Session = Depends(get_db)) -> MovieDetailSchema:
+def create_movie(
+        movie_data: MovieCreateSchema,
+        db: Session = Depends(get_db),
+        user: UserModel = Depends(get_current_user)
+) -> MovieDetailSchema:
     """
     Add a new movie to the database.
 
@@ -289,6 +255,11 @@ def create_movie(movie_data: MovieCreateSchema, db: Session = Depends(get_db)) -
     name, release date, genres, stars, and directors. It automatically
     handles linking or creating related entities.
     """
+    if user.group.name != UserGroupEnum.ADMIN:
+        raise HTTPException(
+            status_code=403, detail="You are not have access to perform this action."
+        )
+
     existing_movie = (
         db.query(MovieModel).filter(MovieModel.name == movie_data.name, MovieModel.year == movie_data.year).first()
     )
@@ -378,6 +349,7 @@ def create_movie(movie_data: MovieCreateSchema, db: Session = Depends(get_db)) -
 def get_movie_by_id(
     movie_id: int,
     db: Session = Depends(get_db),
+    user: UserModel = Depends(get_current_user)
 ) -> MovieDetailSchema:
     """
     Retrieve detailed information about a specific movie by its ID.
@@ -423,6 +395,7 @@ def get_movie_by_id(
 def delete_movie(
     movie_id: int,
     db: Session = Depends(get_db),
+    user: UserModel = Depends(get_current_user)
 ):
     """
     Delete a specific movie by its ID.
@@ -430,6 +403,11 @@ def delete_movie(
     This function deletes a movie identified by its unique ID.
     If the movie does not exist, a 404 error is raised.
     """
+    if user.group.name != UserGroupEnum.ADMIN:
+        raise HTTPException(
+            status_code=403, detail="You are not have access to perform this action."
+        )
+
     movie = db.query(MovieModel).filter(MovieModel.id == movie_id).first()
 
     if not movie:
@@ -463,6 +441,7 @@ def update_movie(
     movie_id: int,
     movie_data: MovieUpdateSchema,
     db: Session = Depends(get_db),
+    user: UserModel = Depends(get_current_user)
 ):
     """
     Update a specific movie by its ID.
@@ -470,7 +449,13 @@ def update_movie(
     This function updates a movie identified by its unique ID.
     If the movie does not exist, a 404 error is raised.
     """
+    if user.group.name != UserGroupEnum.ADMIN:
+        raise HTTPException(
+            status_code=403, detail="You are not have access to perform this action."
+        )
+
     movie = db.query(MovieModel).filter(MovieModel.id == movie_id).first()
+
     if not movie:
         raise HTTPException(status_code=404, detail="Movie with the given ID was not found.")
 
@@ -498,7 +483,7 @@ def update_movie(
         }
     },
 )
-def get_genres(db: Session = Depends(get_db)):
+def get_genres(db: Session = Depends(get_db), user: UserModel = Depends(get_current_user)):
     genres_with_movie_count = (
         db.query(GenreModel, func.count(MovieModel.id).label("movie_count"))
         .join(MovieModel.genres)
@@ -522,7 +507,11 @@ def get_genres(db: Session = Depends(get_db)):
         }
     },
 )
-def get_movies_by_genre(genre_name: str, db: Session = Depends(get_db)):
+def get_movies_by_genre(
+        genre_name: str,
+        db: Session = Depends(get_db),
+        user: UserModel = Depends(get_current_user)
+):
     genre = db.query(GenreModel).filter(GenreModel.name.ilike(genre_name)).first()
     if not genre:
         raise HTTPException(status_code=404, detail="Genre not found")
@@ -585,7 +574,7 @@ def rate_movie(
     "/movies/{movie_id}/like/",
     response_model=MovieDetailSchema,
     summary="Add like to movie",
-    description=("<h3>This endpoint allows clients to like movie</h3>"),
+    description="<h3>This endpoint allows clients to like movie</h3>",
     responses={
         404: {
             "description": "No movies found.",
@@ -599,8 +588,7 @@ def rate_movie(
 )
 def like_movie(
     movie_id: int,
-    jwt_manager: JWTAuthManager = Depends(get_jwt_auth_manager),
-    token: str = Depends(get_token),
+    user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     movie = db.query(MovieModel).filter(MovieModel.id == movie_id).first()
@@ -608,17 +596,11 @@ def like_movie(
     if not movie:
         raise HTTPException(status_code=404, detail="No movies found.")
 
-    try:
-        access_token = jwt_manager.decode_access_token(token)
-    except TokenExpiredError:
-        raise HTTPException(status_code=401, detail="Token has expired.")
 
-    user_id = access_token.get("user_id")
-
-    like = db.query(ReactionModel).filter(ReactionModel.movie_id == movie_id, ReactionModel.user_id == user_id).first()
+    like = db.query(ReactionModel).filter(ReactionModel.movie_id == movie_id, ReactionModel.user_id == user.id).first()
 
     if not like:
-        like = ReactionModel(movie_id=movie_id, user_id=user_id, reaction=ReactionEnum.LIKE)
+        like = ReactionModel(movie_id=movie_id, user_id=user.id, reaction=ReactionEnum.LIKE)
         db.add(like)
         movie.likes += 1
     elif like.reaction == ReactionEnum.LIKE:
@@ -643,7 +625,7 @@ def like_movie(
     "/movies/{movie_id}/dislike/",
     response_model=MovieDetailSchema,
     summary="Add dislike to movie",
-    description=("<h3>This endpoint allows clients to dislike movie</h3>"),
+    description="<h3>This endpoint allows clients to dislike movie</h3>",
     responses={
         404: {
             "description": "No movies found.",
@@ -657,8 +639,7 @@ def like_movie(
 )
 def dislike_movie(
     movie_id: int,
-    jwt_manager: JWTAuthManager = Depends(get_jwt_auth_manager),
-    token: str = Depends(get_token),
+    user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     movie = db.query(MovieModel).filter(MovieModel.id == movie_id).first()
@@ -666,19 +647,12 @@ def dislike_movie(
     if not movie:
         raise HTTPException(status_code=404, detail="No movies found.")
 
-    try:
-        access_token = jwt_manager.decode_access_token(token)
-    except TokenExpiredError:
-        raise HTTPException(status_code=401, detail="Token has expired.")
-
-    user_id = access_token.get("user_id")
-
     dislike = (
-        db.query(ReactionModel).filter(ReactionModel.movie_id == movie_id, ReactionModel.user_id == user_id).first()
+        db.query(ReactionModel).filter(ReactionModel.movie_id == movie_id, ReactionModel.user_id == user.id).first()
     )
 
     if not dislike:
-        dislike = ReactionModel(movie_id=movie_id, user_id=user_id, reaction=ReactionEnum.DISLIKE)
+        dislike = ReactionModel(movie_id=movie_id, user_id=user.id, reaction=ReactionEnum.DISLIKE)
         db.add(dislike)
         movie.dislikes += 1
     elif dislike.reaction == ReactionEnum.DISLIKE:
@@ -703,7 +677,7 @@ def dislike_movie(
     "/movies/{movie_id}/comment/",
     response_model=CommentResponseSchema,
     summary="Add comment to movie",
-    description=("<h3>This endpoint allows clients to comment movie</h3>"),
+    description="<h3>This endpoint allows clients to comment movie</h3>",
     responses={
         404: {
             "description": "No movies found.",
@@ -718,22 +692,15 @@ def dislike_movie(
 def comment_movie(
     movie_id: int,
     comment_data: CommentCreateSchema,
-    jwt_manager: JWTAuthManager = Depends(get_jwt_auth_manager),
-    token: str = Depends(get_token),
+    user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     movie = db.query(MovieModel).filter(MovieModel.id == movie_id).first()
     if not movie:
         raise HTTPException(status_code=404, detail="No movies found.")
 
-    try:
-        access_token = jwt_manager.decode_access_token(token)
-    except TokenExpiredError:
-        raise HTTPException(status_code=401, detail="Token has expired.")
 
-    user_id = access_token.get("user_id")
-
-    comment = CommentModel(movie_id=movie_id, user_id=user_id, comment=comment_data.comment)
+    comment = CommentModel(movie_id=movie_id, user_id=user.id, comment=comment_data.comment)
     db.add(comment)
     db.commit()
     db.refresh(comment)
@@ -745,7 +712,7 @@ def comment_movie(
     "/movies/{movie_id}/{parent_id}/comment/",
     response_model=CommentResponseSchema,
     summary="Add comment to comment",
-    description=("<h3>This endpoint allows clients to comment comment</h3>"),
+    description="<h3>This endpoint allows clients to comment comment</h3>",
     responses={
         404: {
             "description": "No movies found.",
@@ -761,20 +728,12 @@ def comment_movie_comment(
     movie_id: int,
     parent_id: int,
     comment_data: CommentCreateSchema,
-    jwt_manager: JWTAuthManager = Depends(get_jwt_auth_manager),
-    token: str = Depends(get_token),
+    user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     movie = db.query(MovieModel).filter(MovieModel.id == movie_id).first()
     if not movie:
         raise HTTPException(status_code=404, detail="No movies found.")
-
-    try:
-        access_token = jwt_manager.decode_access_token(token)
-    except TokenExpiredError:
-        raise HTTPException(status_code=401, detail="Token has expired.")
-
-    user_id = access_token.get("user_id")
 
     parent_comment = None
     if parent_id != 0:
@@ -784,7 +743,7 @@ def comment_movie_comment(
 
     comment = CommentModel(
         movie_id=movie_id,
-        user_id=user_id,
+        user_id=user.id,
         parent_id=parent_comment.id if parent_comment else None,
         comment=comment_data.comment,
     )
@@ -799,7 +758,7 @@ def comment_movie_comment(
     "/movies/{movie_id}/favorite/",
     response_model=FavoriteSchema,
     summary="Add movie to favorite",
-    description=("<h3>This endpoint allows clients to add movie to favorite</h3>"),
+    description="<h3>This endpoint allows clients to add movie to favorite</h3>",
     responses={
         404: {
             "description": "No movies found.",
@@ -813,8 +772,7 @@ def comment_movie_comment(
 )
 def favorite_movie(
     movie_id: int,
-    jwt_manager: JWTAuthManager = Depends(get_jwt_auth_manager),
-    token: str = Depends(get_token),
+    user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     movie = db.query(MovieModel).filter(MovieModel.id == movie_id).first()
@@ -822,18 +780,11 @@ def favorite_movie(
     if not movie:
         raise HTTPException(status_code=404, detail="No movies found.")
 
-    try:
-        access_token = jwt_manager.decode_access_token(token)
-    except TokenExpiredError:
-        raise HTTPException(status_code=401, detail="Token has expired.")
-
-    user_id = access_token.get("user_id")
-
     favorite = (
-        db.query(FavoriteModel).filter(FavoriteModel.movie_id == movie_id, FavoriteModel.user_id == user_id).first()
+        db.query(FavoriteModel).filter(FavoriteModel.movie_id == movie_id, FavoriteModel.user_id == user.id).first()
     )
     if not favorite:
-        favorite = FavoriteModel(movie_id=movie_id, user_id=user_id, favorite=True)
+        favorite = FavoriteModel(movie_id=movie_id, user_id=user.id, favorite=True)
         db.add(favorite)
     else:
         favorite.favorite = not favorite.favorite

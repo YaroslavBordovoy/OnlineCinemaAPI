@@ -12,8 +12,9 @@ class OrderItemCreateSchema(OrderItemSchema):
 
 class OrderItemResponseSchema(OrderItemSchema):
     id: int
-    order_id: int
     price_at_order: Decimal
+
+    model_config = {"from_attributes": True}
 
 
 class OrderBaseSchema(BaseModel):
@@ -29,8 +30,10 @@ class OrderResponseSchema(OrderBaseSchema):
     id: int
     created_at: datetime
     status: OrderStatusEnum
-    items: list[OrderItemResponseSchema]
+    order_items: list[OrderItemResponseSchema]
     total_amount: Decimal
+
+    model_config = {"from_attributes": True}
 
 class OrderListResponseSchema(BaseModel):
     orders: list[OrderResponseSchema]

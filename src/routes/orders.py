@@ -12,7 +12,7 @@ from database.models.movies import MovieModel
 from database.models.orders import OrderModel, OrderStatusEnum, OrderItemModel
 from database.session_sqlite import get_sqlite_db as get_db
 from schemas.orders import (
-    OrderResponseSchema, OrderListResponseSchema, OrderCreateSchema
+    OrderResponseSchema, OrderListResponseSchema, OrderCreateSchema, OrderItemResponseSchema
 )
 from security.http import get_token
 from security.jwt_interface import JWTAuthManagerInterface
@@ -53,32 +53,69 @@ def create_order(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token or user not found.")
 
+    orders = db.query(OrderModel).join(OrderItemModel).filter(OrderModel.user_id == user.id).all()
+
+    valid_items = []
+    movies_ids = set()
+
+    for order in orders:
+        for item in order.order_items:
+            movies_ids.add(item.movie_id)
+
+    total_price = Decimal(0)
+
+    for order_item in order_data.items:
+        movie = db.query(MovieModel).filter(MovieModel.id == order_item.movie_id).first()
+
+        if not movie:
+            pass
+            # ToDO send email movie unavailable
+
+        if movie.id in movies_ids:
+            pass
+            #ToDo send email can't buy same movie more than one time
+
+        else:
+            item = OrderItemModel(
+                movie_id=order_item.movie_id,
+                price_at_order=Decimal(movie.price)
+            )
+            valid_items.append(item)
+            total_price += Decimal(movie.price)
+            movies_ids.add(order_item.movie_id)
+
+    if not valid_items:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No valid movies found"
+        )
+
     new_order = OrderModel(
         user_id=user.id,
-        total_amount=order_data.total_amount,
+        total_amount=total_price,
         status=OrderStatusEnum.PENDING,
     )
 
     db.add(new_order)
     db.flush()
 
-    for order_item in order_data.items:
-        movie = db.query(MovieModel).filter(MovieModel.id == order_item.movie_id).first()
-        if not movie:
-            pass
-            # ToDO check movie
-        else:
-            item = OrderItemModel(
-                order_id=new_order.id,
-                movie_id=order_item.movie_id,
-                price_at_order=Decimal(movie.price)
-            )
-            db.add(item)
+    for order_item in valid_items:
+        order_item.order_id = new_order.id
+        db.add(order_item)
+
 
     db.commit()
     db.refresh(new_order)
+    items = db.query(OrderItemModel).filter_by(order_id=new_order.id).all()
 
-    return new_order
+    return OrderResponseSchema(
+        id=new_order.id,
+        user_id=new_order.user_id,
+        created_at=new_order.created_at,
+        status=new_order.status,
+        total_amount=new_order.total_amount,
+        order_items=items
+    )
 
 
 @router.get(
@@ -99,16 +136,30 @@ def get_orders(
             detail=str(e)
         )
     user = db.query(UserModel).filter(UserModel.id == user_id).first()
-
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token or user not found."
         )
 
-    orders = db.query(OrderModel).filter(OrderModel.user_id == user.id).all()
+    orders = (
+        db
+        .query(OrderModel)
+        .join(OrderItemModel)
+        .filter(OrderModel.user_id == user.id)
+        .all()
+    )
+    if not orders:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Orders not found."
+        )
 
-    return orders
+    # items = db.query(OrderItemModel).filter_by(order_id=new_order.id).all()
+
+    return OrderListResponseSchema(
+        orders=orders,
+    )
 
 @router.get(
     "/all/",
@@ -132,20 +183,20 @@ def get_all_orders(
             detail=str(e)
         )
 
-    user = db.query(UserModel).join(UserGroupModel).filter_by(id=token_user_id).first()
+    user = db.query(UserModel).join(UserGroupModel).filter(UserModel.id == token_user_id).first()
     if not user or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found or not active."
         )
 
-    if user.group != UserGroupEnum.ADMIN:
+    if user.group.name != UserGroupEnum.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have permission to access this resource."
         )
 
-    query = db.query(OrderModel)
+    query = db.query(OrderModel).join(OrderItemModel)
 
     if user_id:
         query = query.filter(OrderModel.user_id == user_id)
@@ -159,6 +210,139 @@ def get_all_orders(
     if status_filter:
         query = query.filter(OrderModel.status == status_filter)
 
-    orders = query.join(OrderItemModel).all()
+    orders = query.all()
 
-    return orders
+    return OrderListResponseSchema(
+        orders=orders,
+    )
+
+
+@router.get(
+    "/{order_id}/",
+    response_model=OrderResponseSchema
+)
+def get_order(
+        order_id: int,
+        token: str = Depends(get_token),
+        jwt_manager=Depends(get_jwt_auth_manager),
+        db: Session = Depends(get_db)
+):
+    try:
+        payload = jwt_manager.decode_access_token(token)
+        user_id = payload.get("user_id")
+    except BaseSecurityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e)
+        )
+
+    user = db.query(UserModel).join(UserGroupModel).filter(UserModel.id == user_id).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token or user not found."
+        )
+
+    order = (
+        db
+        .query(OrderModel)
+        .join(OrderItemModel)
+        .filter(OrderModel.id == order_id)
+        .first()
+    )
+
+    if not order:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Order not found."
+        )
+
+    if order.user_id != user.id and user.group.name != UserGroupEnum.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to access this resource."
+        )
+
+    return order
+
+
+@router.post(
+    "/{order_id}/to-cart",
+)
+def order_to_cart(
+        order_id: int,
+        token: str = Depends(get_token),
+        jwt_manager=Depends(get_jwt_auth_manager),
+        db: Session = Depends(get_db)
+):
+    try:
+        payload = jwt_manager.decode_access_token(token)
+        user_id = payload.get("user_id")
+    except BaseSecurityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e)
+        )
+
+    user = db.query(UserModel).join(UserGroupModel).filter(UserModel.id == user_id).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token or user not found."
+        )
+
+    order = (
+        db
+        .query(OrderModel)
+        .join(OrderItemModel)
+        .filter(OrderModel.id == order_id)
+        .first()
+    )
+
+    if not order:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Order not found."
+        )
+
+    if order.user_id != user.id and user.group.name != UserGroupEnum.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to access this resource."
+        )
+
+    cart = db.query(CartModel).join(CartItemModel).filter(CartModel.user_id == user.id).first()
+
+    if not cart:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Cart not found."
+        )
+
+    total_amount = Decimal("0")
+
+    purchased_movies = [item.movie_id for item in cart.cart_items]
+    for order_item in order.order_items:
+        movie = db.query(MovieModel).filter(MovieModel.id == order_item.movie_id).first()
+
+        if not movie or order_item.movie_id in purchased_movies:
+            db.delete(order_item)
+            # ToDo send email about not valid movie
+
+        else:
+            cart_item = CartItemModel(
+                cart_id=cart.id,
+                movie_id=order_item.movie_id,
+            )
+            db.add(cart_item)
+            total_amount += order_item.price
+
+    order.total_amount = total_amount
+
+    db.commit()
+
+    return {
+        "detail": "Orders added to cart"
+    }

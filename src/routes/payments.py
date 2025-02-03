@@ -87,7 +87,7 @@ async def stripe_webhook(request: Request,
         intent = event["data"]["object"]
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Payment failed. Please try a different payment method."
+            detail="Payment failed. Please try a different payment method."
         )
 
     return {"status": "success"}

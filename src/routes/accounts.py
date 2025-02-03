@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, BackgroundTasks
 from sqlalchemy.orm import Session
 
-from config import get_jwt_auth_manager
-from services import get_current_user
+from config import get_jwt_auth_manager, get_mail_service
+from mail_service.mail_service import SMTPService
+from services import get_current_user, register_notification
 from database import get_db
 from database.models.accounts import UserModel
 from schemas.accounts import (
@@ -63,8 +64,16 @@ router = APIRouter()
     },
     status_code=status.HTTP_201_CREATED
 )
-def register(user_data: UserRegistrationRequestSchema, db: Session = Depends(get_db)):
-    return create_user(user_data=user_data, db=db)
+def register(
+        user_data: UserRegistrationRequestSchema,
+        background_tasks: BackgroundTasks,
+        db: Session = Depends(get_db),
+        email_sender: SMTPService = Depends(get_mail_service),
+):
+    user = create_user(user_data=user_data, db=db)
+    register_notification(user=user, bg=background_tasks, email_sender=email_sender)
+
+    return user
 
 
 @router.post(

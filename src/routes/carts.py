@@ -1,20 +1,18 @@
 from decimal import Decimal
-from typing import List
 
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from database import get_db
 from database.models.accounts import UserModel, UserGroupModel
-from database.models.cart import CartModel
-from database.models.orders import OrderModel, OrderItemModel, OrderStatusEnum
+from database.models.cart import CartModel, CartItemModel
+from database.models.orders import OrderModel, OrderStatusEnum
 from database.models.payments import PaymentModel, PaymentStatus
 from exceptions import BaseSecurityError
 from schemas.carts import (
     CartItemResponseSchema,
     CartResponseSchema,
     CartItemDetailResponseSchema,
-    CartItemCreateSchema,
 )
 from config import get_jwt_auth_manager
 

@@ -29,9 +29,11 @@ class OrderModel(Base):
         Enum(OrderStatusEnum), nullable=False, default=OrderStatusEnum.PENDING
     )
     total_amount: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
+    cart_id: Mapped[Optional[int]] = mapped_column(ForeignKey("carts.id"), nullable=True)
 
     user: Mapped["UserModel"] = relationship("UserModel")
     order_items: Mapped[List["OrderItemModel"]] = relationship(back_populates="order", cascade="all, delete")
+    cart: Mapped["CartModel"] = relationship("CartModel", back_populates="cart_items")
 
 
 class OrderItemModel(Base):

@@ -1,5 +1,6 @@
 PYTHON = python
 POETRY = poetry
+PROJECT_NAME = Online-Cinema-API
 CONTAINER_NAME = ${PROJECT_NAME}_container
 DOCKER_COMPOSE = docker-compose -f compose.yaml
 

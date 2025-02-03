@@ -10,8 +10,8 @@ from database.models.accounts import UserModel, UserGroupModel, UserGroupEnum
 from database.models.cart import CartModel
 from database.models.movies import MovieModel
 from database.models.orders import OrderModel, OrderStatusEnum, OrderItemModel
-from database.session_sqlite import get_sqlite_db as get_db
 from mail_service.mail_service import SMTPService
+from database import get_db
 from schemas.orders import OrderResponseSchema, OrderListResponseSchema, OrderCreateSchema, OrderItemResponseSchema
 from security.http import get_token
 from security.jwt_interface import JWTAuthManagerInterface

@@ -87,7 +87,7 @@ def pay_cart(
 
     try:
         intent = stripe.PaymentIntent.create(
-            amount=int(total_amount), currency="usd", metadata={"cart_id": cart.id}
+            amount=int(total_amount * 100), currency="usd", metadata={"cart_id": cart.id}
         )
         for order in cart_items:
             new = PaymentModel(

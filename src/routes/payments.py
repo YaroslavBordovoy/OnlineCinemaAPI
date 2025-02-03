@@ -103,8 +103,8 @@ async def get_payments(user_id: int,
 @router.get("/mod/payments/")
 async def get_moderator_payments(
         user_id: int = None,
-        start_date: datetime = None,
-        end_date: datetime = None,
+        start_date: datetime.datetime = None,
+        end_date: datetime.datetime = None,
         status: PaymentStatus = None,
         db: Session = Depends(get_db)
 ):

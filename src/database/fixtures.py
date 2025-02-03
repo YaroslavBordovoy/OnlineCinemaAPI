@@ -6,9 +6,12 @@ from database.models.accounts import UserGroupModel, UserGroupEnum
 from database.models.movies import MovieModel, GenreModel, DirectorModel, CertificationModel, StarModel
 
 def load_fixtures(db: Session):
-    user_group = UserGroupModel(id=1, name=UserGroupEnum.USER)
-    admin_group = UserGroupModel(id=2, name=UserGroupEnum.ADMIN)
-    db.add_all([user_group, admin_group])
+    user_groups = [
+        UserGroupModel(name=UserGroupEnum.USER),
+        UserGroupModel(name=UserGroupEnum.MODERATOR),
+        UserGroupModel(name=UserGroupEnum.ADMIN),
+    ]
+    db.add_all(user_groups)
     db.commit()
 
     certifications = [
@@ -71,11 +74,4 @@ def load_fixtures(db: Session):
     ]
 
     db.add_all(movies)
-
-    user_groups = [
-        UserGroupModel(name=UserGroupEnum.USER),
-        UserGroupModel(name=UserGroupEnum.MODERATOR),
-        UserGroupModel(name=UserGroupEnum.ADMIN),
-    ]
-    db.add_all(user_groups)
     db.commit()

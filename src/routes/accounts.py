@@ -45,25 +45,15 @@ router = APIRouter()
         409: {
             "description": "Conflict - User with this email already exists.",
             "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "A user with this email test@example.com already exists."
-                    }
-                }
+                "application/json": {"example": {"detail": "A user with this email test@example.com already exists."}}
             },
         },
         500: {
             "description": "Internal Server Error - An error occurred during user creation.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "An error occurred during user creation."
-                    }
-                }
-            },
+            "content": {"application/json": {"example": {"detail": "An error occurred during user creation."}}},
         },
     },
-    status_code=status.HTTP_201_CREATED
+    status_code=status.HTTP_201_CREATED,
 )
 def register(
         user_data: UserRegistrationRequestSchema,
@@ -89,36 +79,18 @@ def register(
     responses={
         400: {
             "description": "Bad Request - Invalid or expired activation token.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "Invalid or expired activation token."
-                    }
-                }
-            },
+            "content": {"application/json": {"example": {"detail": "Invalid or expired activation token."}}},
         },
         404: {
             "description": "Not found - User with this email not found.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "No user with email test@example.com was found."
-                    }
-                }
-            },
+            "content": {"application/json": {"example": {"detail": "No user with email test@example.com was found."}}},
         },
         500: {
             "description": "Internal Server Error - An error occurred during user activation.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "An error occurred during user activation."
-                    }
-                }
-            },
+            "content": {"application/json": {"example": {"detail": "An error occurred during user activation."}}},
         },
     },
-    status_code=status.HTTP_200_OK
+    status_code=status.HTTP_200_OK,
 )
 def activate(
     user_data: UserActivationTokenRequestSchema,
@@ -144,33 +116,15 @@ def activate(
     responses={
         401: {
             "description": "Unauthorized - Invalid email or password.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "Invalid email or password."
-                    }
-                }
-            },
+            "content": {"application/json": {"example": {"detail": "Invalid email or password."}}},
         },
         403: {
             "description": "Forbidden - User account is not activated.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "User account is not activated."
-                    }
-                }
-            },
+            "content": {"application/json": {"example": {"detail": "User account is not activated."}}},
         },
         500: {
             "description": "Internal Server Error - An error occurred during user login.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "An error occurred during login."
-                    }
-                }
-            },
+            "content": {"application/json": {"example": {"detail": "An error occurred during login."}}},
         },
     },
     status_code=status.HTTP_200_OK,
@@ -191,21 +145,12 @@ def login(
     responses={
         500: {
             "description": "Internal Server Error - An error occurred during user logout.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "An error occurred during logout."
-                    }
-                }
-            },
+            "content": {"application/json": {"example": {"detail": "An error occurred during logout."}}},
         },
     },
     status_code=status.HTTP_200_OK,
 )
-def logout(
-    db: Session = Depends(get_db),
-    user: UserModel = Depends(get_current_user)
-):
+def logout(db: Session = Depends(get_db), user: UserModel = Depends(get_current_user)):
     return logout_user(db=db, user=user)
 
 
@@ -242,23 +187,11 @@ def request_password_reset(
     responses={
         400: {
             "description": "Bad Request - Invalid email or token.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "Invalid email or token."
-                    }
-                }
-            },
+            "content": {"application/json": {"example": {"detail": "Invalid email or token."}}},
         },
         500: {
             "description": "Internal Server Error - An error occurred during user login.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "An error occurred while resetting the password."
-                    }
-                }
-            },
+            "content": {"application/json": {"example": {"detail": "An error occurred while resetting the password."}}},
         },
     },
     status_code=status.HTTP_200_OK,
@@ -288,23 +221,11 @@ def request_password_reset_complete(
     responses={
         400: {
             "description": "Bad Request - Invalid email or password.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "Invalid email or password."
-                    }
-                }
-            },
+            "content": {"application/json": {"example": {"detail": "Invalid email or password."}}},
         },
         500: {
             "description": "Internal Server Error - An error occurred during user login.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "An error occurred while changing the password.."
-                    }
-                }
-            },
+            "content": {"application/json": {"example": {"detail": "An error occurred while changing the password.."}}},
         },
     },
     status_code=status.HTTP_200_OK,
@@ -334,33 +255,15 @@ def request_change_password(
     responses={
         400: {
             "description": "Bad Request - Token has expired or invalid token.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "Token has expired or invalid token."
-                    }
-                }
-            },
+            "content": {"application/json": {"example": {"detail": "Token has expired or invalid token."}}},
         },
         401: {
             "description": "Unauthorized - Refresh token not found.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "Refresh token not found."
-                    }
-                }
-            },
+            "content": {"application/json": {"example": {"detail": "Refresh token not found."}}},
         },
         404: {
             "description": "Not Found - User not found.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "User not found."
-                    }
-                }
-            },
+            "content": {"application/json": {"example": {"detail": "User not found."}}},
         },
     },
     status_code=status.HTTP_200_OK,

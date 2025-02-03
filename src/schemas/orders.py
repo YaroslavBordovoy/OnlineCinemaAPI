@@ -4,11 +4,14 @@ from decimal import Decimal
 
 from database.models.orders import OrderStatusEnum
 
+
 class OrderItemSchema(BaseModel):
     movie_id: int
 
+
 class OrderItemCreateSchema(OrderItemSchema):
     pass
+
 
 class OrderItemResponseSchema(OrderItemSchema):
     id: int
@@ -34,6 +37,7 @@ class OrderResponseSchema(OrderBaseSchema):
     total_amount: Decimal
 
     model_config = {"from_attributes": True}
+
 
 class OrderListResponseSchema(BaseModel):
     orders: list[OrderResponseSchema]

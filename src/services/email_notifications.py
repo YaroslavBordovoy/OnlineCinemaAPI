@@ -47,7 +47,8 @@ def password_reset_request_notification(
         bg: BackgroundTasks,
         email_sender: SMTPService,
 ) -> None:
-    reset_token = f"http://127.0.0.1/api/v1/accounts/password-reset/request/?token={user.password_reset_token.token}"
+    reset_token = (f"http://127.0.0.1/api/v1/accounts/password-reset/request/?token="
+                   f"{user.password_reset_token.token}")
 
     bg.add_task(
         email_sender.send_email,

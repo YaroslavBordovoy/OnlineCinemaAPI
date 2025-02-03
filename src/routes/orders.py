@@ -53,20 +53,28 @@ def create_order(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token or user not found.")
 
+    orders = db.query(OrderModel).join(OrderItemModel).filter(OrderModel.user_id == user.id).all()
+
     valid_items = []
     movies_ids = set()
+
+    for order in orders:
+        for item in order.order_items:
+            movies_ids.add(item.movie_id)
+
     total_price = Decimal(0)
 
     for order_item in order_data.items:
         movie = db.query(MovieModel).filter(MovieModel.id == order_item.movie_id).first()
 
+        if not movie:
+            pass
+            # ToDO send email movie unavailable
+
         if movie.id in movies_ids:
             pass
             #ToDo send email can't buy same movie more than one time
 
-        if not movie:
-            pass
-            # ToDO send email movie unavailable
         else:
             item = OrderItemModel(
                 movie_id=order_item.movie_id,

@@ -3,7 +3,7 @@ import os
 
 import stripe
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from database.models.orders import OrderModel
@@ -23,9 +23,15 @@ async def create_payment(payment: PaymentCreate,
                          db: Session = Depends(get_db)):
     order = db.query(OrderModel).filter(OrderModel.id == payment.order_id).first()
     if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
 
     amount = sum(item.price_at_payment for item in order.order_items)
+
+    if amount != order.total_amount:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Order total does not match calculated amount."
+        )
 
     try:
         intent = stripe.PaymentIntent.create(
@@ -47,7 +53,7 @@ async def create_payment(payment: PaymentCreate,
 
         return {"client_secret": intent.client_secret}
     except stripe.error.StripeError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 @router.get("/stripe-webhook/")
 async def stripe_webhook(request: Request,
@@ -60,7 +66,7 @@ async def stripe_webhook(request: Request,
             payload, sig_header, os.environ["STRIPE_ENDPOINT_SECRET"]
         )
     except (ValueError, stripe.error.SignatureVerificationError):
-        raise HTTPException(status_code=400, detail="Invalid signature")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid signature")
 
     if event["type"] == "payment_intent.succeeded":
         intent = event["data"]["object"]
@@ -71,6 +77,18 @@ async def stripe_webhook(request: Request,
         if payment:
             payment.status = PaymentStatus.SUCCESSFUL
             db.commit()
+
+        order = db.query(OrderModel).filter(OrderModel.id == order_id).first()
+        if order:
+            order.status = PaymentStatus.SUCCESSFUL
+            db.commit()
+
+    elif event["type"] == "payment_intent.payment_failed":
+        intent = event["data"]["object"]
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Payment failed. Please try a different payment method."
+        )
 
     return {"status": "success"}
 

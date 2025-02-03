@@ -14,7 +14,7 @@ from database.models.movies import (
     DirectorModel,
     UserRatingModel
 )
-from database.session_sqlite import get_sqlite_db as get_db
+from database import get_db
 from schemas.movies import (
     MovieListResponseSchema,
     MovieListItemSchema,

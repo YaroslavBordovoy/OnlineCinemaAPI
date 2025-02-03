@@ -9,16 +9,8 @@ from sqlalchemy import or_, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
-from config import get_jwt_auth_manager
 from database.models import ReactionModel, FavoriteModel, CommentModel
 from database.models.films_features import ReactionEnum
-from database.models.movies import (
-    MovieModel,
-    CertificationModel,
-    GenreModel,
-    StarModel,
-    DirectorModel,
-)
 from config import get_jwt_auth_manager
 from database.models.accounts import UserModel
 from database.models.movies import (
@@ -26,7 +18,8 @@ from database.models.movies import (
     CertificationModel,
     GenreModel,
     StarModel,
-    DirectorModel, UserRatingModel
+    DirectorModel,
+    UserRatingModel
 )
 from database.session_sqlite import get_sqlite_db as get_db
 from exceptions import TokenExpiredError
@@ -42,6 +35,7 @@ from schemas.movies import (
     CommentResponseSchema
 )
 from security.http import get_token
+from security.jwt_interface import JWTAuthManagerInterface
 from security.token_manager import JWTAuthManager
 
 router = APIRouter()

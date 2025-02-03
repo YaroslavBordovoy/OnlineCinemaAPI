@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status, BackgroundTasks
+from fastapi import APIRouter, Depends, status, BackgroundTasks, Request
 from sqlalchemy.orm import Session
 
 from config import get_jwt_auth_manager, get_mail_service
@@ -31,6 +31,7 @@ from services.user_service import (
     logout_user,
     change_user_password,
 )
+from config.rate_limiter import limiter
 
 
 router = APIRouter()
@@ -129,7 +130,9 @@ def activate(
     },
     status_code=status.HTTP_200_OK,
 )
+@limiter.limit("3/10minutes")
 def login(
+    request: Request,
     user_data: LoginRequestSchema,
     db: Session = Depends(get_db),
     jwt_auth_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),

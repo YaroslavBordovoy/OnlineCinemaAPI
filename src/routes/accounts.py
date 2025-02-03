@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, BackgroundTasks
 from sqlalchemy.orm import Session
 
-from config import get_jwt_auth_manager
+from config import get_jwt_auth_manager, get_mail_service
+from mail_service.mail_service import SMTPService
 from services import get_current_user
+from services import email_notifications
 from database import get_db
 from database.models.accounts import UserModel
 from schemas.accounts import (
@@ -53,8 +55,20 @@ router = APIRouter()
     },
     status_code=status.HTTP_201_CREATED,
 )
-def register(user_data: UserRegistrationRequestSchema, db: Session = Depends(get_db)):
-    return create_user(user_data=user_data, db=db)
+def register(
+        user_data: UserRegistrationRequestSchema,
+        background_tasks: BackgroundTasks,
+        db: Session = Depends(get_db),
+        email_sender: SMTPService = Depends(get_mail_service),
+):
+    user = create_user(user_data=user_data, db=db)
+    email_notifications.register_notification(
+        user=user,
+        bg=background_tasks,
+        email_sender=email_sender,
+    )
+
+    return user
 
 
 @router.post(
@@ -78,8 +92,20 @@ def register(user_data: UserRegistrationRequestSchema, db: Session = Depends(get
     },
     status_code=status.HTTP_200_OK,
 )
-def activate(user_data: UserActivationTokenRequestSchema, db: Session = Depends(get_db)):
-    return activate_user(user_data=user_data, db=db)
+def activate(
+    user_data: UserActivationTokenRequestSchema,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    email_sender: SMTPService = Depends(get_mail_service),
+):
+    response = activate_user(user_data=user_data, db=db)
+    email_notifications.activation_success_notification(
+        user_email=user_data.email,
+        bg=background_tasks,
+        email_sender=email_sender,
+    )
+
+    return response
 
 
 @router.post(
@@ -137,9 +163,20 @@ def logout(db: Session = Depends(get_db), user: UserModel = Depends(get_current_
 )
 def request_password_reset(
     user_data: PasswordResetRequestSchema,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
+    email_sender: SMTPService = Depends(get_mail_service),
 ):
-    return password_reset_request(user_data=user_data, db=db)
+    user, response = password_reset_request(user_data=user_data, db=db)
+
+    if user:
+        email_notifications.password_reset_request_notification(
+            user=user,
+            bg=background_tasks,
+            email_sender=email_sender,
+        )
+
+    return response
 
 
 @router.post(
@@ -161,9 +198,19 @@ def request_password_reset(
 )
 def request_password_reset_complete(
     user_data: PasswordResetRequestCompleteSchema,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
+    email_sender: SMTPService = Depends(get_mail_service),
 ):
-    return password_reset_complete(user_data=user_data, db=db)
+    user, response = password_reset_complete(user_data=user_data, db=db)
+
+    if user:
+        email_notifications.password_reset_complete_notification(
+            user=user,
+            bg=background_tasks,
+            email_sender=email_sender,
+        )
+    return response
 
 
 @router.post(
@@ -185,10 +232,19 @@ def request_password_reset_complete(
 )
 def request_change_password(
     user_data: PasswordChangeRequestSchema,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     user: UserModel = Depends(get_current_user),
+    email_sender: SMTPService = Depends(get_mail_service),
 ):
-    return change_user_password(user_data=user_data, db=db, user=user)
+    response = change_user_password(user_data=user_data, db=db, user=user)
+    email_notifications.password_change_complete_notification(
+        user=user,
+        bg=background_tasks,
+        email_sender=email_sender,
+    )
+
+    return response
 
 
 @router.post(

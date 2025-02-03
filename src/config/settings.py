@@ -15,6 +15,13 @@ class BaseAppSettings(BaseSettings):
     BASE_DIR: Path = Path(__file__).parent.parent
     PATH_TO_DB: str = str(BASE_DIR / "database" / "cinema.db")
 
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", 587))
+    SMTP_USERNAME: str = os.getenv("SMTP_USERNAME")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD")
+    SMTP_FROM_NAME: str = os.getenv("SMTP_FROM_NAME")
+    SMTP_TLS: bool = os.getenv("SMTP_TLS")
+
     S3_STORAGE_HOST: str = os.getenv("MINIO_HOST", "minio-cinema")
     S3_STORAGE_PORT: int = os.getenv("MINIO_PORT", 9000)
     S3_STORAGE_ACCESS_KEY: str = os.getenv("MINIO_ROOT_USER", "minioadmin")

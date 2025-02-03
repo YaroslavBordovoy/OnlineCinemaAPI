@@ -120,8 +120,8 @@ def login_user(
 
     try:
         access_token = jwt_auth_manager.create_access_token({"user_id": user.id})
-        refresh_token = jwt_auth_manager.create_refresh_token({"user_id": user.id})
-        db_refresh_token = RefreshTokenModel(user_id=user.id, token=refresh_token)
+        _refresh_token = jwt_auth_manager.create_refresh_token({"user_id": user.id})
+        db_refresh_token = RefreshTokenModel(user_id=user.id, token=_refresh_token)
         db.add(db_refresh_token)
         db.commit()
 
@@ -154,7 +154,10 @@ def logout_user(db: Session, user: UserModel) -> MessageResponseSchema:
         )
 
 
-def password_reset_request(user_data: PasswordResetRequestSchema, db: Session) -> MessageResponseSchema:
+def password_reset_request(
+        user_data: PasswordResetRequestSchema,
+        db: Session
+) -> MessageResponseSchema | tuple[UserModel, MessageResponseSchema] | HTTPException:
     user = db.query(UserModel).filter_by(email=user_data.email).first()
 
     if not user or not user.is_active:
@@ -167,7 +170,9 @@ def password_reset_request(user_data: PasswordResetRequestSchema, db: Session) -
         db.add(new_reset_token)
         db.commit()
 
-        return MessageResponseSchema(message="If you are registered, you will receive an email with instructions.")
+        return user, MessageResponseSchema(
+            message="If you are registered, you will receive an email with instructions."
+        )
     except SQLAlchemyError:
         db.rollback()
 
@@ -180,7 +185,7 @@ def password_reset_request(user_data: PasswordResetRequestSchema, db: Session) -
 def password_reset_complete(
     user_data: PasswordResetRequestCompleteSchema,
     db: Session,
-) -> MessageResponseSchema | HTTPException:
+) -> tuple[UserModel, MessageResponseSchema] | HTTPException:
     user = db.query(UserModel).filter_by(email=user_data.email).first()
 
     if not user or not user.is_active:
@@ -205,7 +210,7 @@ def password_reset_complete(
         db.delete(reset_token)
         db.commit()
 
-        return MessageResponseSchema(message="Password reset successfully.")
+        return user, MessageResponseSchema(message="Password reset successfully.")
     except SQLAlchemyError:
         db.rollback()
 

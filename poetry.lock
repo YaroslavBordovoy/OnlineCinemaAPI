@@ -554,6 +554,23 @@ files = [
 colors = ["colorama (>=0.4.6)"]
 
 [[package]]
+name = "jinja2"
+version = "3.1.5"
+description = "A very fast and expressive template engine."
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "jinja2-3.1.5-py3-none-any.whl", hash = "sha256:aba0f4dc9ed8013c424088f68a5c226f7d6097ed89b246d7749c2ec4175c6adb"},
+    {file = "jinja2-3.1.5.tar.gz", hash = "sha256:8fefff8dc3034e27bb80d67c671eb8a9bc424c0ef4c0826edbff304cceff43bb"},
+]
+
+[package.dependencies]
+MarkupSafe = ">=2.0"
+
+[package.extras]
+i18n = ["Babel (>=2.7)"]
+
+[[package]]
 name = "jmespath"
 version = "1.0.1"
 description = "JSON Matching Expressions"
@@ -1449,4 +1466,4 @@ standard = ["colorama (>=0.4)", "httptools (>=0.6.3)", "python-dotenv (>=0.13)",
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12"
-content-hash = "9c4c8f3d862af2ec310802c73735dd97ef58d13cc9d01410a840cb5bf979512e"
+content-hash = "b825e78e3cb380cbf38ff4f89af85fdc42c4c109a3c12d09c5a06ccadd9905a9"

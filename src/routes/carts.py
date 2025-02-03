@@ -1,5 +1,4 @@
 from decimal import Decimal
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -8,7 +7,8 @@ from database.models.accounts import UserModel
 from database.models.cart import CartModel, CartItemModel
 from schemas.carts import (
     CartItemResponseSchema,
-    CartResponseSchema, CartItemDetailResponseSchema, CartItemCreateSchema,
+    CartResponseSchema,
+    CartItemDetailResponseSchema,
 )
 from config import get_jwt_auth_manager
 

@@ -1,18 +1,39 @@
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from pathlib import Path
+
+from jinja2 import Environment, FileSystemLoader
+
+
+TEMPLATES_DIR = Path(__file__).parent / "templates"
 
 
 class SMTPService:
-    def __init__(self, smtp_host: str, smtp_port: int, username: str, password: str, from_name: str, use_tls: bool = True):
+    def __init__(
+            self,
+            smtp_host: str,
+            smtp_port: int,
+            username: str,
+            password: str,
+            from_name: str,
+            use_tls: bool = True
+    ):
         self.smtp_host = smtp_host
         self.smtp_port = smtp_port
         self.username = username
         self.password = password
         self.from_name = from_name
         self.use_tls = use_tls
+        self.template_env = Environment(loader=FileSystemLoader(TEMPLATES_DIR))
 
-    def send_email(self, to_email: str, subject: str, body: str):
+    def render_template(self, template_name: str, **kwargs) -> str:
+        template = self.template_env.get_template(template_name)
+        return template.render(**kwargs)
+
+    def send_email(self, to_email: str, subject: str, template_name: str, context: dict):
+        body = self.render_template(template_name, **context)
+
         msg = MIMEMultipart()
         msg["From"] = f"{self.from_name} <{self.username}>"
         msg["To"] = to_email

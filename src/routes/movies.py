@@ -24,6 +24,7 @@ from schemas.movies import (
 from security.http import get_token
 from security.jwt_interface import JWTAuthManagerInterface
 from security.token_manager import JWTAuthManager
+from services import get_current_user
 
 router = APIRouter()
 
@@ -548,22 +549,11 @@ def get_movies_by_genre(genre_name: str, db: Session = Depends(get_db)):
     },
 )
 def rate_movie(
-    movie_id: int,
-    rating: int = Query(ge=0, le=10),
-    db: Session = Depends(get_db),
-    token: str = Depends(get_token),
-    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+        movie_id: int,
+        rating: int = Query(ge=0, le=10),
+        db: Session = Depends(get_db),
+        user: UserModel = Depends(get_current_user),
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        token_user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
-
-    user = db.query(UserModel).filter_by(id=token_user_id).first()
-    if not user or not user.is_active:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or not active.")
-
     movie = db.query(MovieModel).filter(MovieModel.id == movie_id).first()
     if not movie:
         raise HTTPException(status_code=404, detail="Movie not found")

@@ -12,6 +12,7 @@ from database.models.accounts import (
     RefreshTokenModel,
     PasswordResetTokenModel,
 )
+from database.models.cart import CartModel
 from exceptions import BaseSecurityError
 from schemas.accounts import (
     UserRegistrationRequestSchema,
@@ -54,6 +55,10 @@ def create_user(user_data: UserRegistrationRequestSchema, db: Session) -> UserMo
         db.add(activation_token)
         db.commit()
         db.refresh(new_user)
+
+        user_cart = CartModel(user_id=new_user.id)
+        db.add(user_cart)
+        db.commit()
 
         return new_user
     except SQLAlchemyError:

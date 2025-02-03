@@ -64,7 +64,7 @@ def load_fixtures(db: Session):
             rating=round(random.uniform(6.0, 9.5), 1),
             meta_score=random.randint(50, 100),
             gross=round(random.uniform(10.0, 500.0), 2),
-            description=f"Description for Movie",
+            description="Description for Movie",
             price=round(random.uniform(5.0, 20.0), 2),
             certification=random.choice(certifications),
             genres=random.sample(genres, k=random.randint(1, 3)),

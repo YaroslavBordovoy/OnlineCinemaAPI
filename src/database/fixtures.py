@@ -71,4 +71,11 @@ def load_fixtures(db: Session):
     ]
 
     db.add_all(movies)
+
+    user_groups = [
+        UserGroupModel(name=UserGroupEnum.USER),
+        UserGroupModel(name=UserGroupEnum.MODERATOR),
+        UserGroupModel(name=UserGroupEnum.ADMIN),
+    ]
+    db.add_all(user_groups)
     db.commit()

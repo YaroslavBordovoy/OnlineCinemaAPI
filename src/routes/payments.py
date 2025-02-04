@@ -7,10 +7,12 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from database.models import UserModel
 from database.models.orders import OrderModel
 from database.models.payments import PaymentModel, PaymentStatus
 from database import get_db
 from schemas.payments import PaymentCreate
+from services import get_current_user
 
 
 load_dotenv()
@@ -21,7 +23,11 @@ router = APIRouter()
 
 
 @router.post("/create-payment/")
-async def create_payment(payment: PaymentCreate, db: Session = Depends(get_db)):
+async def create_payment(
+        payment: PaymentCreate,
+        db: Session = Depends(get_db),
+        user: UserModel = Depends(get_current_user)
+):
     order = db.query(OrderModel).filter(OrderModel.id == payment.order_id).first()
     if not order:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
@@ -55,7 +61,11 @@ async def create_payment(payment: PaymentCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/stripe-webhook/")
-async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
+async def stripe_webhook(
+        request: Request,
+        db: Session = Depends(get_db),
+        user: UserModel = Depends(get_current_user)
+):
     payload = await request.body()
     sig_header = request.headers.get("Stripe-Signature")
 
@@ -111,8 +121,8 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/")
-async def get_payments(user_id: int, db: Session = Depends(get_db)):
-    payments = db.query(PaymentModel).filter(PaymentModel.user_id == user_id).all()
+async def get_payments(user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
+    payments = db.query(PaymentModel).filter(PaymentModel.user_id == user.id).all()
     return payments
 
 
@@ -123,6 +133,7 @@ async def get_moderator_payments(
     end_date: datetime = None,
     status: PaymentStatus = None,
     db: Session = Depends(get_db),
+    user: UserModel = Depends(get_current_user)
 ):
     filt = db.query(PaymentModel)
     if user_id:

@@ -25,10 +25,8 @@ from schemas.movies import (
     CommentCreateSchema,
     CommentResponseSchema,
 )
-from security.http import get_token
-from security.jwt_interface import JWTAuthManagerInterface
-from security.token_manager import JWTAuthManager
 from services import get_current_user
+
 
 router = APIRouter()
 

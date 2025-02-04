@@ -5,18 +5,16 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 
-from config.dependencies import get_jwt_auth_manager, get_mail_service
-from database.models.accounts import UserModel, UserGroupModel, UserGroupEnum
+from config.dependencies import get_mail_service
+from database.models.accounts import UserModel, UserGroupEnum
 from database.models.cart import CartModel
 from database.models.movies import MovieModel
 from database.models.orders import OrderModel, OrderStatusEnum, OrderItemModel
 from mail_service.mail_service import SMTPService
 from database import get_db
-from schemas.orders import OrderResponseSchema, OrderListResponseSchema, OrderCreateSchema, OrderItemResponseSchema
-from security.http import get_token
-from security.jwt_interface import JWTAuthManagerInterface
-from exceptions import BaseSecurityError
-from services import email_notifications
+from schemas.orders import OrderResponseSchema, OrderListResponseSchema, OrderCreateSchema
+from services import email_notifications, get_current_user
+
 
 router = APIRouter()
 
@@ -25,24 +23,10 @@ router = APIRouter()
 def create_order(
     order_data: OrderCreateSchema,
     background_tasks: BackgroundTasks,
-    token: str = Depends(get_token),
-    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+    user: UserModel = Depends(get_current_user),
     email_sender: SMTPService = Depends(get_mail_service),
     db: Session = Depends(get_db),
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        payload_user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
-
-
-    user = db.query(UserModel).filter(UserModel.id == payload_user_id).first()
-
-    if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token or user not found.")
-
-
     valid_items = []
     movies_ids = set()
 
@@ -109,19 +93,9 @@ def create_order(
 
 @router.get("/", response_model=OrderListResponseSchema)
 def get_orders(
-    token: str = Depends(get_token),
-    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+    user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
-    user = db.query(UserModel).filter(UserModel.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token or user not found.")
-
     orders = db.query(OrderModel).join(OrderItemModel).filter(OrderModel.user_id == user.id).all()
     if not orders:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Orders not found.")
@@ -132,25 +106,14 @@ def get_orders(
 
 
 @router.get("/all/", response_model=OrderListResponseSchema)
-def get_all_orders(
-    token: str = Depends(get_token),
-    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+def get_all_users_orders(
+    user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
     user_id: Optional[int] = None,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
     status_filter: Optional[OrderStatusEnum] = None,
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        token_user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
-
-    user = db.query(UserModel).join(UserGroupModel).filter(UserModel.id == token_user_id).first()
-    if not user or not user.is_active:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or not active.")
-
     if user.group.name != UserGroupEnum.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="You do not have permission to access this resource."
@@ -180,21 +143,9 @@ def get_all_orders(
 @router.get("/{order_id}/", response_model=OrderResponseSchema)
 def get_order(
     order_id: int,
-    token: str = Depends(get_token),
-    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+    user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
-
-    user = db.query(UserModel).join(UserGroupModel).filter(UserModel.id == user_id).first()
-
-    if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token or user not found.")
-
     order = db.query(OrderModel).join(OrderItemModel).filter(OrderModel.id == order_id).first()
 
     if not order:
@@ -213,21 +164,9 @@ def get_order(
 )
 def order_to_cart(
     order_id: int,
-    token: str = Depends(get_token),
-    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+    user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
-
-    user = db.query(UserModel).join(UserGroupModel).filter(UserModel.id == user_id).first()
-
-    if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token or user not found.")
-
     order = db.query(OrderModel).join(OrderItemModel).filter(OrderModel.id == order_id).first()
     if not order:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found.")

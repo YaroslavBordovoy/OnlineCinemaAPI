@@ -30,8 +30,8 @@ app.include_router(accounts_router, prefix=f"{api_version_prefix}/accounts", tag
 app.include_router(profiles_router, prefix=f"{api_version_prefix}/profiles", tags=["profiles"])
 app.include_router(movie_router, prefix=f"{api_version_prefix}/cinema", tags=["cinema"])
 app.include_router(order_router, prefix=f"{api_version_prefix}/orders", tags=["orders"])
-app.include_router(payments_router, prefix=f"{api_version_prefix}/payments", tags=["payments"])
 app.include_router(carts_router, prefix=f"{api_version_prefix}/carts", tags=["carts"])
+app.include_router(payments_router, prefix=f"{api_version_prefix}/payments", tags=["payments"])
 
 
 if __name__ == "__main__":

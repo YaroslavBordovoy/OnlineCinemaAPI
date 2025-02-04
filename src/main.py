@@ -1,6 +1,7 @@
 import uvicorn
 from fastapi import FastAPI
-
+from config.rate_limiter import RateLimitMiddleware, RateLimitExceeded, rate_limit_exceeded_handler, limiter
+from slowapi.middleware import SlowAPIMiddleware
 from routes import (
     movie_router,
     accounts_router,
@@ -18,6 +19,12 @@ app = FastAPI(
 )
 
 api_version_prefix = "/api/v1"
+
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
+app.add_middleware(RateLimitMiddleware)
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+
 
 app.include_router(accounts_router, prefix=f"{api_version_prefix}/accounts", tags=["accounts"])
 app.include_router(profiles_router, prefix=f"{api_version_prefix}/profiles", tags=["profiles"])

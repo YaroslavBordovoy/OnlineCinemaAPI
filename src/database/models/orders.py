@@ -34,6 +34,9 @@ class OrderModel(Base):
     user: Mapped["UserModel"] = relationship("UserModel")
     order_items: Mapped[List["OrderItemModel"]] = relationship(back_populates="order", cascade="all, delete")
     cart: Mapped["CartModel"] = relationship("CartModel", back_populates="order")
+    payments: Mapped[List["PaymentModel"]] = relationship(
+        "PaymentModel", back_populates="order", cascade="all, delete"
+    )
 
 
 class OrderItemModel(Base):

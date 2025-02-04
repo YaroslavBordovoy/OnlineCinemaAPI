@@ -6,6 +6,7 @@ from sqlalchemy import ForeignKey, DateTime, Numeric, Enum, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database.models.base import Base
 from database.models.accounts import UserModel
+from database.models.cart import CartModel
 from database.models.movies import MovieModel
 
 

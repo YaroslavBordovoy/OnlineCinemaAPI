@@ -65,18 +65,32 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
 
     if event["type"] == "payment_intent.succeeded":
         intent = event["data"]["object"]
-        order_id = intent["metadata"]["order_id"]
+        try:
+            order_id = intent["metadata"]["order_id"]
 
-        payment = db.query(PaymentModel).filter(PaymentModel.order_id == order_id).first()
+            payment = db.query(PaymentModel).filter(PaymentModel.order_id == order_id).first()
 
-        if payment:
-            payment.status = PaymentStatus.SUCCESSFUL
-            db.commit()
+            if payment:
+                payment.status = PaymentStatus.SUCCESSFUL
+                db.commit()
 
-        order = db.query(OrderModel).filter(OrderModel.id == order_id).first()
-        if order:
-            order.status = PaymentStatus.SUCCESSFUL
-            db.commit()
+            order = db.query(OrderModel).filter(OrderModel.id == order_id).first()
+            if order:
+                order.status = PaymentStatus.SUCCESSFUL
+                db.commit()
+        except KeyError:
+            order_ids = intent["metadata"]["order_ids"]
+            for order_id in order_ids:
+                payment = db.query(PaymentModel).filter(PaymentModel.order_id == order_id).first()
+
+                if payment:
+                    payment.status = PaymentStatus.SUCCESSFUL
+                    db.commit()
+
+                order = db.query(OrderModel).filter(OrderModel.id == order_id).first()
+                if order:
+                    order.status = PaymentStatus.SUCCESSFUL
+                    db.commit()
 
     elif event["type"] == "payment_intent.payment_failed":
         intent = event["data"]["object"]

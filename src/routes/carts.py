@@ -242,7 +242,10 @@ def pay_cart(
             db.commit()
         except Exception:
             db.rollback()
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Something went wrong.")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Something went wrong."
+            )
 
         return {"client_secret": intent.client_secret}
     except stripe.error.StripeError as e:

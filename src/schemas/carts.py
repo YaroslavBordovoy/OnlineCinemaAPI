@@ -4,6 +4,8 @@ from typing import List
 
 from pydantic import BaseModel, EmailStr
 
+from schemas.orders import OrderResponseSchema
+
 
 class CartItemBaseSchema(BaseModel):
     movie_id: int
@@ -20,8 +22,7 @@ class CartItemResponseSchema(CartItemBaseSchema):
 class CartResponseSchema(BaseModel):
     id: int
     user_id: int
-    email: EmailStr
-    cart_items: List[CartItemResponseSchema]
+    cart_items: list[OrderResponseSchema]
     price: Decimal
 
     model_config = {"from_attributes": True}

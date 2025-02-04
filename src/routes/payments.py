@@ -5,6 +5,7 @@ import os
 import stripe
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from database.models import UserModel
@@ -83,12 +84,12 @@ async def stripe_webhook(
 
             if payment:
                 payment.status = PaymentStatus.SUCCESSFUL
-                db.commit()
+                db.flush()
 
             order = db.query(OrderModel).filter(OrderModel.id == order_id).first()
             if order:
                 order.status = PaymentStatus.SUCCESSFUL
-                db.commit()
+            db.commit()
         except KeyError:
             order_ids = intent["metadata"]["order_ids"]
             order_ids = json.loads(order_ids)
@@ -97,19 +98,18 @@ async def stripe_webhook(
 
                 if payment:
                     payment.status = PaymentStatus.SUCCESSFUL
+                    db.flush()
 
                 order = db.query(OrderModel).filter(OrderModel.id == order_id).first()
                 if order:
                     order.status = PaymentStatus.SUCCESSFUL
-
-            try:
                 db.commit()
-            except Exception:
-                db.rollback()
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Something went wrong."
-                )
+        except SQLAlchemyError as e:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=str(e),
+            )
 
     elif event["type"] == "payment_intent.payment_failed":
         intent = event["data"]["object"]

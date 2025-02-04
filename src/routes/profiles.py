@@ -8,6 +8,7 @@ from schemas.profiles import ProfileCreateSchema, ProfileResponseSchema
 from services import get_current_user, create_user_profile
 from storages import S3StorageInterface
 
+
 router = APIRouter()
 
 

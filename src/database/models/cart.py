@@ -6,7 +6,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database.models.accounts import UserModel
 from database.models.base import Base
 from database.models.movies import MovieModel
-from database.models.orders import OrderModel
 
 
 class CartModel(Base):

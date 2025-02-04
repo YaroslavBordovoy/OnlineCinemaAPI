@@ -7,20 +7,15 @@ from pydantic import BaseModel, EmailStr
 
 class CartItemBaseSchema(BaseModel):
     movie_id: int
-    cart_id: int
-
 
 class CartItemCreateSchema(CartItemBaseSchema):
     added_at: date
-
 
 class CartItemResponseSchema(CartItemBaseSchema):
     name: str
     added_at: date
 
-    class Config:
-        arbitrary_types_allowed = True
-
+    model_config = {"arbitrary_types_allowed": True}
 
 class CartResponseSchema(BaseModel):
     id: int
@@ -28,5 +23,15 @@ class CartResponseSchema(BaseModel):
     email: EmailStr
     cart_items: List[CartItemResponseSchema]
     price: Decimal
+
+    model_config = {"from_attributes": True}
+
+
+class CartItemDetailResponseSchema(CartItemBaseSchema):
+    id: int
+    name: str
+    year: int
+    price: Decimal
+    genres: List[str]
 
     model_config = {"from_attributes": True}

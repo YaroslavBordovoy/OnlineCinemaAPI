@@ -11,6 +11,7 @@ from schemas.accounts import (
     UserRegistrationRequestSchema,
     UserRegistrationResponseSchema,
     UserActivationTokenRequestSchema,
+    UserReActivationTokenRequestSchema,
     LoginRequestSchema,
     LoginResponseSchema,
     PasswordResetRequestSchema,
@@ -30,6 +31,7 @@ from services.user_service import (
     refresh_token,
     logout_user,
     change_user_password,
+    resend_activation_token,
 )
 from config.rate_limiter import limiter
 
@@ -105,6 +107,29 @@ def activate(
         bg=background_tasks,
         email_sender=email_sender,
     )
+
+    return response
+
+
+@router.post(
+    "/resend-activation/",
+    response_model=MessageResponseSchema,
+    status_code=status.HTTP_200_OK,
+)
+def re_activate(
+    user_data: UserReActivationTokenRequestSchema,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    email_sender: SMTPService = Depends(get_mail_service),
+):
+    user, response = resend_activation_token(user_data=user_data, db=db)
+
+    if user:
+        email_notifications.register_notification(
+            user=user,
+            bg=background_tasks,
+            email_sender=email_sender,
+        )
 
     return response
 

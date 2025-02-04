@@ -95,3 +95,33 @@ def password_change_complete_notification(
             "email": user.email,
         },
     )
+
+def movie_unavailable_notification(
+        user: UserModel,
+        bg: BackgroundTasks,
+        email_sender: SMTPService,
+) -> None:
+    bg.add_task(
+        email_sender.send_email,
+        to_email=user.email,
+        subject="Movie in your order unavailable",
+        template_name="movie_unavailable_email.html",
+        context={
+            "email": user.email,
+        }
+    )
+
+def movie_already_in_orders_notification(
+        user: UserModel,
+        bg: BackgroundTasks,
+        email_sender: SMTPService,
+) -> None:
+    bg.add_task(
+        email_sender.send_email,
+        to_email=user.email,
+        subject="Movie in your order or other",
+        template_name="movie_already_in_orders.html",
+        context={
+            "email": user.email,
+        }
+    )

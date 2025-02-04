@@ -1,6 +1,6 @@
 import datetime
 
-from sqlalchemy import DATETIME, UniqueConstraint, func, Integer, ForeignKey
+from sqlalchemy import UniqueConstraint, func, Integer, ForeignKey, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database.models.accounts import UserModel
@@ -16,9 +16,12 @@ class CartModel(Base):
     cart_items: Mapped[list["CartItemModel"]] = relationship(
         "CartItemModel", back_populates="cart", cascade="all, delete-orphan"
     )
+    order: Mapped["OrderModel"] = relationship(
+        "OrderModel", back_populates="cart", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
-        return f"<User: {self.user}>"
+        return f"<id: {self.id}, user_id: {self.user_id}, cart_items: {self.cart_items}>"
 
 
 class CartItemModel(Base):
@@ -28,9 +31,6 @@ class CartItemModel(Base):
     cart: Mapped["CartModel"] = relationship("CartModel", back_populates="cart_items")
     movie_id: Mapped[int] = mapped_column(Integer, ForeignKey("movies.id"), nullable=False)
     movie: Mapped["MovieModel"] = relationship("MovieModel")
-    added_at: Mapped[datetime] = mapped_column(DATETIME, nullable=False, default=func.current_date())
+    added_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.current_date())
 
     __table_args__ = (UniqueConstraint("cart_id", "movie_id", name="unique_cart_movie"),)
-
-    def __repr__(self) -> str:
-        return f"<Cart: {self.cart_id}>, Movie: {self.movie}, Added: {self.added_at}>"

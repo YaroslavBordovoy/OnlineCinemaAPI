@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
+from sqlalchemy import select, delete
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -25,6 +26,7 @@ from schemas.accounts import (
     RefreshTokenRequestSchema,
     RefreshTokenResponseSchema,
     PasswordChangeRequestSchema,
+    UserReActivationTokenRequestSchema,
 )
 from security.jwt_interface import JWTAuthManagerInterface
 
@@ -70,7 +72,7 @@ def create_user(user_data: UserRegistrationRequestSchema, db: Session) -> UserMo
         )
 
 
-def activate_user(user_data: UserActivationTokenRequestSchema, db: Session) -> MessageResponseSchema | HTTPException:
+def activate_user(user_data: UserActivationTokenRequestSchema, db: Session) -> MessageResponseSchema:
     user = db.query(UserModel).filter_by(email=user_data.email).first()
 
     if not user:
@@ -102,6 +104,42 @@ def activate_user(user_data: UserActivationTokenRequestSchema, db: Session) -> M
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred during account activation.",
+        )
+
+
+def resend_activation_token(
+        user_data: UserReActivationTokenRequestSchema,
+        db: Session,
+) -> tuple[UserModel, MessageResponseSchema]:
+    user = db.scalar(select(UserModel).where(UserModel.email == user_data.email))
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found.",
+        )
+
+    if user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User account is already active.",
+        )
+
+    try:
+        db.execute(delete(ActivationTokenModel).where(ActivationTokenModel.user_id == user.id))
+
+        new_activation_token = ActivationTokenModel(user_id=user.id)
+        db.add(new_activation_token)
+        db.commit()
+        db.refresh(user)
+
+        return user, MessageResponseSchema(message="A new activation token has been generated.")
+    except SQLAlchemyError:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred during the resend activation token.",
         )
 
 
@@ -157,7 +195,7 @@ def logout_user(db: Session, user: UserModel) -> MessageResponseSchema:
 def password_reset_request(
         user_data: PasswordResetRequestSchema,
         db: Session
-) -> MessageResponseSchema | tuple[UserModel, MessageResponseSchema] | HTTPException:
+) -> tuple[UserModel, MessageResponseSchema]:
     user = db.query(UserModel).filter_by(email=user_data.email).first()
 
     if not user or not user.is_active:
@@ -185,7 +223,7 @@ def password_reset_request(
 def password_reset_complete(
     user_data: PasswordResetRequestCompleteSchema,
     db: Session,
-) -> tuple[UserModel, MessageResponseSchema] | HTTPException:
+) -> tuple[UserModel, MessageResponseSchema]:
     user = db.query(UserModel).filter_by(email=user_data.email).first()
 
     if not user or not user.is_active:
@@ -224,7 +262,7 @@ def change_user_password(
     user_data: PasswordChangeRequestSchema,
     db: Session,
     user: UserModel,
-) -> MessageResponseSchema | HTTPException:
+) -> MessageResponseSchema:
     if not user.verify_password(raw_password=user_data.password):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email or password.")
 

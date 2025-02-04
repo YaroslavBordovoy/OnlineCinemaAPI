@@ -1,8 +1,8 @@
 """Initial migration
 
-Revision ID: 63ddae44b8db
+Revision ID: 0c8568734095
 Revises: 
-Create Date: 2025-02-02 16:22:51.418023
+Create Date: 2025-02-03 22:59:49.176663
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '63ddae44b8db'
+revision: str = '0c8568734095'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -62,6 +62,9 @@ def upgrade() -> None:
     sa.Column('gross', sa.Float(), nullable=True),
     sa.Column('description', sa.Text(), nullable=False),
     sa.Column('price', sa.DECIMAL(precision=10, scale=2), nullable=False),
+    sa.Column('rating', sa.Float(), nullable=True),
+    sa.Column('likes', sa.Integer(), nullable=False),
+    sa.Column('dislikes', sa.Integer(), nullable=False),
     sa.Column('certification_id', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['certification_id'], ['certifications.id'], ),
     sa.PrimaryKeyConstraint('id'),
@@ -73,8 +76,8 @@ def upgrade() -> None:
     sa.Column('email', sa.String(length=255), nullable=False),
     sa.Column('hashed_password', sa.String(length=255), nullable=False),
     sa.Column('is_active', sa.Boolean(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('group_id', sa.Integer(), nullable=False),
     sa.ForeignKeyConstraint(['group_id'], ['user_groups.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
@@ -92,6 +95,26 @@ def upgrade() -> None:
     op.create_table('carts',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('comments',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('comment', sa.Text(), nullable=True),
+    sa.Column('parent_id', sa.Integer(), nullable=True),
+    sa.Column('movie_id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['movie_id'], ['movies.id'], ),
+    sa.ForeignKeyConstraint(['parent_id'], ['comments.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('favorites',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('favorite', sa.Boolean(), nullable=False),
+    sa.Column('movie_id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['movie_id'], ['movies.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -116,15 +139,6 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['star_id'], ['stars.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('movie_id', 'star_id')
     )
-    op.create_table('orders',
-    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('user_id', sa.Integer(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.Column('status', sa.Enum('PENDING', 'PAID', 'CANCELED', name='orderstatusenum'), nullable=False),
-    sa.Column('total_amount', sa.Numeric(precision=10, scale=2), nullable=True),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
     op.create_table('password_reset_tokens',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
@@ -133,6 +147,15 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('token')
+    )
+    op.create_table('reactions',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('reaction', sa.Enum('LIKE', 'DISLIKE', name='reactionenum'), nullable=True),
+    sa.Column('movie_id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['movie_id'], ['movies.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
     )
     op.create_table('refresh_tokens',
     sa.Column('token', sa.String(length=512), nullable=False),
@@ -156,15 +179,35 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('user_id')
     )
+    op.create_table('user_ratings',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('movie_id', sa.Integer(), nullable=False),
+    sa.Column('rating', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['movie_id'], ['movies.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id')
+    )
     op.create_table('cart_items',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('cart_id', sa.Integer(), nullable=False),
     sa.Column('movie_id', sa.Integer(), nullable=False),
-    sa.Column('added_at', sa.DATETIME(), nullable=False),
+    sa.Column('added_at', sa.DateTime(), nullable=False),
     sa.ForeignKeyConstraint(['cart_id'], ['carts.id'], ),
     sa.ForeignKeyConstraint(['movie_id'], ['movies.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('cart_id', 'movie_id', name='unique_cart_movie')
+    )
+    op.create_table('orders',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('status', sa.Enum('PENDING', 'PAID', 'CANCELED', name='orderstatusenum'), nullable=False),
+    sa.Column('total_amount', sa.Numeric(precision=10, scale=2), nullable=True),
+    sa.Column('cart_id', sa.Integer(), nullable=True),
+    sa.ForeignKeyConstraint(['cart_id'], ['carts.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
     )
     op.create_table('order_items',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
@@ -179,7 +222,7 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('order_id', sa.Integer(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
     sa.Column('status', sa.Enum('SUCCESSFUL', 'CANCELLED', 'REFUNDED', name='paymentstatus'), nullable=False),
     sa.Column('amount', sa.Numeric(precision=10, scale=2), nullable=False),
     sa.Column('external_payment_id', sa.String(), nullable=True),
@@ -204,14 +247,18 @@ def downgrade() -> None:
     op.drop_table('payment_items')
     op.drop_table('payments')
     op.drop_table('order_items')
+    op.drop_table('orders')
     op.drop_table('cart_items')
+    op.drop_table('user_ratings')
     op.drop_table('user_profiles')
     op.drop_table('refresh_tokens')
+    op.drop_table('reactions')
     op.drop_table('password_reset_tokens')
-    op.drop_table('orders')
     op.drop_table('movies_stars')
     op.drop_table('movies_genres')
     op.drop_table('movies_directors')
+    op.drop_table('favorites')
+    op.drop_table('comments')
     op.drop_table('carts')
     op.drop_table('activation_tokens')
     op.drop_index(op.f('ix_users_email'), table_name='users')

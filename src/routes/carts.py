@@ -1,3 +1,4 @@
+import json
 from decimal import Decimal
 
 import stripe
@@ -336,19 +337,29 @@ def pay_cart(
     total_amount = sum(item.total_amount for item in cart_items)
 
     try:
+        order_ids = [order.id for order in cart_items]
         intent = stripe.PaymentIntent.create(
-            amount=int(total_amount * 100), currency="usd", metadata={"order_ids": [order.id for order in cart_items]}
+            amount=int(total_amount * 100), currency="usd", metadata={"order_ids": json.dumps(order_ids)}
         )
+
         for order in cart_items:
-            new = PaymentModel(
+            new_payment = PaymentModel(
                 user_id=order.user_id,
                 order_id=order.id,
                 amount=order.total_amount,
                 external_payment_id=intent.id,
                 status=PaymentStatus.SUCCESSFUL,
             )
-            db.add(new)
-        db.commit()
+            db.add(new_payment)
+
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Something went wrong."
+            )
 
         return {"client_secret": intent.client_secret}
     except stripe.error.StripeError as e:

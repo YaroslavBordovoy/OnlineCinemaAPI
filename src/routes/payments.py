@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 import os
 
@@ -80,17 +81,25 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                 db.commit()
         except KeyError:
             order_ids = intent["metadata"]["order_ids"]
+            order_ids = json.loads(order_ids)
             for order_id in order_ids:
                 payment = db.query(PaymentModel).filter(PaymentModel.order_id == order_id).first()
 
                 if payment:
                     payment.status = PaymentStatus.SUCCESSFUL
-                    db.commit()
 
                 order = db.query(OrderModel).filter(OrderModel.id == order_id).first()
                 if order:
                     order.status = PaymentStatus.SUCCESSFUL
-                    db.commit()
+
+            try:
+                db.commit()
+            except Exception:
+                db.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Something went wrong."
+                )
 
     elif event["type"] == "payment_intent.payment_failed":
         intent = event["data"]["object"]

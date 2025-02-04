@@ -1,23 +1,16 @@
 import json
-from decimal import Decimal
 
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from database import get_db
-from database.models.accounts import UserModel, UserGroupModel
-from database.models.cart import CartModel, CartItemModel
+from database.models.accounts import UserModel
+from database.models.cart import CartModel
 from database.models.payments import PaymentModel, PaymentStatus
-from exceptions import BaseSecurityError
-from schemas.carts import (
-    CartResponseSchema,
-)
-from config import get_jwt_auth_manager
-
+from schemas.carts import CartResponseSchema
 from database.models.orders import OrderItemModel, OrderModel, OrderStatusEnum
-from security.http import get_token
-from security.jwt_interface import JWTAuthManagerInterface
-from security.token_manager import JWTAuthManager
+from services import get_current_user
 
 router = APIRouter()
 
@@ -36,15 +29,9 @@ router = APIRouter()
 def remove_movie_from_cart(
     cart_item_id: int,
     db: Session = Depends(get_db),
-    token: str = Depends(get_token),
-    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+    user: UserModel = Depends(get_current_user)
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
-    cart = db.query(CartModel).filter(CartModel.user_id == user_id).first()
+    cart = db.query(CartModel).filter(CartModel.user_id == user.id).first()
 
     if not cart:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cart not found")
@@ -80,16 +67,9 @@ def remove_movie_from_cart(
 )
 def clear_cart(
     db: Session = Depends(get_db),
-    token: str = Depends(get_token),
-    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+    user: UserModel = Depends(get_current_user)
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
-
-    cart = db.query(CartModel).filter(CartModel.user_id == user_id).first()
+    cart = db.query(CartModel).filter(CartModel.user_id == user.id).first()
 
     if not cart:
         raise HTTPException(status_code=404, detail="Cart not found")
@@ -124,21 +104,9 @@ def clear_cart(
     response_model=CartResponseSchema,
 )
 def get_cart(
-    token: str = Depends(get_token),
-    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+    user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
-
-    user = db.query(UserModel).join(UserGroupModel).filter(UserModel.id == user_id).first()
-
-    if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token or user not found.")
-
     cart = db.query(CartModel).filter(CartModel.user_id == user.id).first()
     cart_items = db.query(OrderModel).join(OrderItemModel).filter(OrderModel.cart_id == cart.id).all()
 
@@ -157,16 +125,8 @@ def get_cart(
 )
 def get_all_carts(
     db: Session = Depends(get_db),
-    token: str = Depends(get_token),
-    jwt_manager: JWTAuthManager = Depends(get_jwt_auth_manager),
+    user: UserModel = Depends(get_current_user)
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except Exception:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Access is forbidden.")
-
-    user = db.query(UserModel).filter(UserModel.id == user_id).first()
     if user is None or user.group.name != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="You don't have permission to view this resource."
@@ -194,21 +154,9 @@ def get_all_carts(
     "/pay-all/",
 )
 def pay_cart(
-    token: str = Depends(get_token),
-    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+    user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    try:
-        payload = jwt_manager.decode_access_token(token)
-        user_id = payload.get("user_id")
-    except BaseSecurityError as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
-
-    user = db.query(UserModel).join(UserGroupModel).filter(UserModel.id == user_id).first()
-
-    if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token or user not found.")
-
     cart = db.query(CartModel).filter(CartModel.user_id == user.id).first()
     cart_items = (
         db.query(OrderModel)
@@ -237,16 +185,14 @@ def pay_cart(
                 status=PaymentStatus.SUCCESSFUL,
             )
             db.add(new_payment)
-
-        try:
-            db.commit()
-        except Exception:
-            db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Something went wrong."
-            )
+        db.commit()
 
         return {"client_secret": intent.client_secret}
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
     except stripe.error.StripeError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

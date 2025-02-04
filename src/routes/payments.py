@@ -23,42 +23,42 @@ stripe.api_key = os.environ["STRIPE_SECRET_KEY"]
 router = APIRouter()
 
 
-@router.post("/create-payment/")
-async def create_payment(
-        payment: PaymentCreate,
-        db: Session = Depends(get_db),
-        user: UserModel = Depends(get_current_user)
-):
-    order = db.query(OrderModel).filter(OrderModel.id == payment.order_id).first()
-    if not order:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
-
-    amount = sum(item.price_at_payment for item in order.order_items)
-
-    if amount != order.total_amount:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Order total does not match calculated amount."
-        )
-
-    try:
-        intent = stripe.PaymentIntent.create(
-            amount=int(amount * 100), currency="usd", metadata={"order_id": payment.order.id}
-        )
-
-        new = PaymentModel(
-            user_id=order.user_id,
-            order_id=order.id,
-            amount=amount,
-            external_payment_id=intent.id,
-            status=PaymentStatus.SUCCESSFUL,
-        )
-        db.add(new)
-        db.commit()
-        db.refresh(new)
-
-        return {"client_secret": intent.client_secret}
-    except stripe.error.StripeError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+# @router.post("/create-payment/")
+# async def create_payment(
+#         payment: PaymentCreate,
+#         db: Session = Depends(get_db),
+#         user: UserModel = Depends(get_current_user)
+# ):
+#     order = db.query(OrderModel).filter(OrderModel.id == payment.order_id).first()
+#     if not order:
+#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+#
+#     amount = sum(item.price_at_payment for item in order.order_items)
+#
+#     if amount != order.total_amount:
+#         raise HTTPException(
+#             status_code=status.HTTP_400_BAD_REQUEST, detail="Order total does not match calculated amount."
+#         )
+#
+#     try:
+#         intent = stripe.PaymentIntent.create(
+#             amount=int(amount * 100), currency="usd", metadata={"order_id": payment.order.id}
+#         )
+#
+#         new = PaymentModel(
+#             user_id=order.user_id,
+#             order_id=order.id,
+#             amount=amount,
+#             external_payment_id=intent.id,
+#             status=PaymentStatus.SUCCESSFUL,
+#         )
+#         db.add(new)
+#         db.commit()
+#         db.refresh(new)
+#
+#         return {"client_secret": intent.client_secret}
+#     except stripe.error.StripeError as e:
+#         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.get("/stripe-webhook/")
